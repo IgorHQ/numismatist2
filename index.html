@@ -17,7 +17,6 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
-            /* Глобальна заборона зуму від подвійного тапу для всієї сторінки */
             touch-action: manipulation;
         }
 
@@ -73,23 +72,9 @@
         .menu-btn { width: 80%; padding: 20px; margin: 10px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
 
         #album-window { display: none; position: fixed; inset: 0; background: #111; z-index: 2000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
-        
-        /* Список альбому: блокуємо зум для всього скролу */
-        #album-list { 
-            flex: 1; 
-            overflow-y: auto; 
-            margin-top: 15px; 
-            touch-action: manipulation; 
-        }
+        #album-list { flex: 1; overflow-y: auto; margin-top: 15px; touch-action: manipulation; }
+        .coin-row { background: #1a1a1a; margin-bottom: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; touch-action: manipulation; }
 
-        .coin-row { 
-            background: #1a1a1a; margin-bottom: 10px; padding: 15px; 
-            border-radius: 15px; display: flex; justify-content: space-between; 
-            align-items: center; border: 1px solid #333; 
-            touch-action: manipulation; 
-        }
-
-        /* Кнопка продажу в альбомі */
         .sell-btn-album {
             background: #e74c3c; color: white; border: none; 
             padding: 8px 12px; border-radius: 10px; font-weight: bold; 
@@ -136,7 +121,7 @@
     <div id="album-window">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0">Ваш Альбом</h2>
-            <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px; cursor:pointer; touch-action: manipulation;">&times;</button>
+            <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px; cursor:pointer;">&times;</button>
         </div>
         <div id="album-list"></div>
     </div>
@@ -157,6 +142,37 @@
         realism: { search: 80, work: 40, rareChance: 0.05, garbageMin: 1, startMoney: 1000 } 
     };
 
+    // Реальна база раритетів
+    const COIN_DB = {
+        1: { common: 1, rarities: [
+            { y: 1994, price: 2500, desc: "Рідкісний рік (300 шт)", xp: 500 },
+            { y: 1996, price: 1000, desc: "Рідкісний рік (з наборів)", xp: 300 },
+            { y: 1992, price: 4000, desc: "Штамп 1.11АЕ (великі ягоди)", xp: 800 }
+        ]},
+        2: { common: 2, rarities: [
+            { y: 1992, price: 25000, desc: "Вузький вінок (Штамп 1.1ГА)", xp: 2000 },
+            { y: 1996, price: 800, desc: "Рідкісний рік", xp: 250 },
+            { y: 2003, price: 4500, desc: "Рідкісний обіговий рік", xp: 700 }
+        ]},
+        5: { common: 5, rarities: [
+            { y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 },
+            { y: 2001, price: 1000, desc: "Рідкісний рік", xp: 300 },
+            { y: 1992, price: 5000, desc: "Крупна насічка гурта", xp: 900 }
+        ]},
+        10: { common: 10, rarities: [
+            { y: 2001, price: 1200, desc: "Рідкісний рік", xp: 300 },
+            { y: 1992, price: 15000, desc: "Шість ягід (Штамп 1.14ГАм)", xp: 1500 }
+        ]},
+        25: { common: 25, rarities: [
+            { y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 },
+            { y: 1992, price: 3500, desc: "Англійський чекан (втиснутий)", xp: 800 }
+        ]},
+        50: { common: 50, rarities: [
+            { y: 1996, price: 1500, desc: "Рідкісний рік", xp: 400 },
+            { y: 1992, price: 6000, desc: "Трапеції (Штамп 1(2).1АГм)", xp: 1000 }
+        ]}
+    };
+
     const container = document.getElementById('container3d');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, container.clientWidth/container.clientHeight, 0.1, 1000);
@@ -166,28 +182,7 @@
     const light = new THREE.DirectionalLight(0xffffff, 2.5); light.position.set(2, 2, 5); scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-    function createLoadingFace(isReverse = false) {
-        const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#aa8800'; ctx.beginPath(); ctx.arc(256, 256, 250, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#856a00'; ctx.lineWidth = 15; ctx.stroke();
-        ctx.save(); ctx.translate(256, 256);
-        if (isReverse) ctx.rotate(Math.PI); 
-        ctx.fillStyle = '#333333'; ctx.textAlign = 'center'; ctx.font = 'bold 70px Arial';
-        ctx.fillText("НУМІЗМАТ", 0, 25); ctx.restore();
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.needsUpdate = true; return tex;
-    }
-
-    const coinMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(2, 2, 0.18, 64), 
-        [
-            new THREE.MeshStandardMaterial({color: 0xaa8800}), 
-            new THREE.MeshStandardMaterial({map: createLoadingFace(false)}), 
-            new THREE.MeshStandardMaterial({map: createLoadingFace(true)})   
-        ]
-    );
-    
+    const coinMesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.18, 64), [new THREE.MeshStandardMaterial({color: 0xaa8800}), new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()]);
     coinMesh.rotation.z = Math.PI/2;
     const pivot = new THREE.Group(); pivot.add(coinMesh); scene.add(pivot);
     pivot.position.y = 0.5; pivot.scale.set(0.9, 0.9, 0.9);
@@ -229,16 +224,39 @@
     function search() {
         if (money < config.search) return;
         money -= config.search;
-        const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)], y = 1992 + Math.floor(Math.random()*32);
-        const roll = Math.random(); 
-        let price, statusText, isR = false, rot = 0, isI = false, xpGain = 5;
-        
-        if (roll < config.rareChance) {
-            isR = true; 
-            if (roll < 0.01) { statusText = "Інкузне карбування"; price = 3000 + Math.floor(Math.random() * 3000); isI = true; xpGain = 1000; } 
-            else { rot = [90, 180, 270][Math.floor(Math.random()*3)]; statusText = `Поворот ${rot}°`; price = 150 + Math.floor(Math.random() * 200); xpGain = 80; }
-        } else { statusText = "Без браку"; price = config.garbageMin + Math.floor(Math.random() * 8); xpGain = 5; }
-        
+
+        const nominals = [1, 2, 5, 10, 25, 50];
+        const n = nominals[Math.floor(Math.random() * nominals.length)];
+        const y = 1992 + Math.floor(Math.random() * 32); 
+
+        let price = 0, statusText = "", isR = false, xpGain = 5, rot = 0, isI = false;
+
+        // 1. ПЕРЕВІРКА НА РАРИТЕТ З КАТАЛОГУ (15% шанс від вказаних років)
+        const rareMatch = COIN_DB[n].rarities.find(r => r.y === y);
+        if (rareMatch && Math.random() < 0.15) {
+            isR = true;
+            statusText = rareMatch.desc;
+            price = rareMatch.price;
+            xpGain = rareMatch.xp;
+        } 
+        // 2. ПЕРЕВІРКА НА ТЕХНІЧНИЙ БРАК (ПО СПОСОБУ config.rareChance)
+        else if (Math.random() < config.rareChance) {
+            isR = true;
+            if (Math.random() < 0.1) {
+                statusText = "Інкузне карбування"; price = 4500; isI = true; xpGain = 600;
+            } else {
+                rot = [90, 180, 270][Math.floor(Math.random() * 3)];
+                statusText = `Поворот ${rot}°`; 
+                price = 280 + Math.floor(Math.random() * 300); xpGain = 60;
+            }
+        } 
+        // 3. ЗВИЧАЙНА МОНЕТА (СТАРИЙ СПОСІБ)
+        else {
+            statusText = "Гарний стан";
+            price = COIN_DB[n].common + config.garbageMin + Math.floor(Math.random() * 10);
+            xpGain = 5;
+        }
+
         currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
         update3D(n, y, isI, rot);
         
@@ -260,7 +278,7 @@
         const list = document.getElementById('album-list'); list.innerHTML = '';
         myCoins.forEach((c, i) => {
             const row = document.createElement('div'); row.className = 'coin-row';
-            row.innerHTML = `<div><b>${c.n}к ${c.y}</b><br><small style="color:${c.rare?'var(--gold)':'#888'}">Стан: ${c.e}</small></div><button class="sell-btn-album" onclick="sellFromAlbum(${i}, event)">${c.price}₴</button>`;
+            row.innerHTML = `<div><b>${c.n}к ${c.y}</b><br><small style="color:${c.rare?'var(--gold)':'#888'}">${c.e}</small></div><button class="sell-btn-album" onclick="sellFromAlbum(${i}, event)">${c.price}₴</button>`;
             row.onclick = () => { update3D(c.n, c.y, c.inc, c.rot); toggleAlbum(); };
             list.appendChild(row);
         });
