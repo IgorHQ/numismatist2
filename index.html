@@ -139,7 +139,6 @@
     const light = new THREE.DirectionalLight(0xffffff, 2.5); light.position.set(2, 2, 5); scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-    // Виправлена функція: сірий колір та підтримка перевороту
     function createLoadingFace(isReverse = false) {
         const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
         const ctx = canvas.getContext('2d');
@@ -148,8 +147,8 @@
         
         ctx.save();
         ctx.translate(256, 256);
-        if (isReverse) ctx.rotate(Math.PI); // Перевертаємо текст на звороті
-        ctx.fillStyle = '#333333'; // Темно-сірий колір для чіткості
+        if (isReverse) ctx.rotate(Math.PI); 
+        ctx.fillStyle = '#333333'; 
         ctx.textAlign = 'center'; ctx.font = 'bold 70px Arial';
         ctx.fillText("НУМІЗМАТ", 0, 25);
         ctx.restore();
@@ -162,8 +161,8 @@
         new THREE.CylinderGeometry(2, 2, 0.18, 64), 
         [
             new THREE.MeshStandardMaterial({color: 0xaa8800}), 
-            new THREE.MeshStandardMaterial({map: createLoadingFace(false)}), // Аверс
-            new THREE.MeshStandardMaterial({map: createLoadingFace(true)})   // Реверс (перевернутий)
+            new THREE.MeshStandardMaterial({map: createLoadingFace(false)}), 
+            new THREE.MeshStandardMaterial({map: createLoadingFace(true)})   
         ]
     );
     
@@ -207,23 +206,34 @@
         updateUI();
     }
 
+    // ОНОВЛЕНА ЛОГІКА ОЦІНКИ ТА ДОСВІДУ (Citations:)
     function search() {
         if (money < config.search) return;
         money -= config.search;
-        const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)], y = 1992 + Math.floor(Math.random()*30);
+        const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)], y = 1992 + Math.floor(Math.random()*32);
         const roll = Math.random(); 
-        let price, statusText, isR = false, rot = 0, isI = false;
+        let price, statusText, isR = false, rot = 0, isI = false, xpGain = 5;
         
         if (roll < config.rareChance) {
             isR = true; 
-            if (roll < 0.02) { statusText = "Інкузний брак"; price = 3000; isI = true; }
-            else { rot = [90, 180, 270][Math.floor(Math.random()*3)]; statusText = `Поворот ${rot}°`; price = 250; }
+            if (roll < 0.01) { 
+                statusText = "Інкузне карбування"; 
+                price = 3000 + Math.floor(Math.random() * 3000); //
+                isI = true;
+                xpGain = 1000; //
+            } else {
+                rot = [90, 180, 270][Math.floor(Math.random()*3)];
+                statusText = `Поворот ${rot}°`; 
+                price = 150 + Math.floor(Math.random() * 200); //
+                xpGain = 80; //
+            }
         } else {
             statusText = "Без браку"; 
-            price = config.garbageMin + Math.floor(Math.random()*5);
+            price = config.garbageMin + Math.floor(Math.random() * 8); //
+            xpGain = 5; //
         }
         
-        currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI };
+        currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
         update3D(n, y, isI, rot);
         
         document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
@@ -237,7 +247,14 @@
     }
 
     function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); } }
-    function keepFound() { myCoins.push(currentCoin); xp += (currentCoin.rare?50:5); closeModal(); }
+    
+    // ОНОВЛЕНО: Нарахування досвіду за монету (Citations:)
+    function keepFound() { 
+        myCoins.push(currentCoin); 
+        xp += (currentCoin.xp || 5); 
+        closeModal(); 
+    }
+
     function sellFound() { money += currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); }
     function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins })); }
