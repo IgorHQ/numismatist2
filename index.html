@@ -15,6 +15,9 @@
         #top-bar { position: absolute; top: calc(10px + env(safe-area-inset-top, 20px)); left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; }
         .stat { background: rgba(30,30,30,0.85); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); font-size: 12px; font-weight: bold; }
         
+        /* Кнопка скидання */
+        .reset-btn { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #e74c3c; padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+
         #modal {
             display: none; position: absolute; 
             bottom: calc(90px + var(--ios-bottom));
@@ -86,9 +89,11 @@
             <div class="stat">XP <span id="xp-val" style="color:var(--blue)">0</span></div>
         </div>
         <div style="display:flex; gap:5px;">
+            <button class="reset-btn" onclick="resetThisMode()">Почати заново</button>
             <button class="stat" style="background:#333; border:none; color:white;" onclick="location.reload()">Меню</button>
         </div>
     </div>
+
     <div id="modal">
         <h3 id="m-title"></h3>
         <div id="coin-desc"></div>
@@ -97,6 +102,7 @@
             <button class="nav-btn" style="padding:12px 0; background:#444; color:white;" onclick="sellFound()">Продати</button>
         </div>
     </div>
+
     <div id="album-window">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0">Колекція</h2>
@@ -104,6 +110,7 @@
         </div>
         <div id="album-list" class="list-container"></div>
     </div>
+
     <nav class="main-nav">
         <button id="work-btn" class="nav-btn btn-blue" onclick="work()"></button>
         <button id="search-btn" class="nav-btn btn-gold" onclick="search()"></button>
@@ -117,17 +124,21 @@
     let money = 0, xp = 0, myCoins = [], currentCoin = null, config = {}, currentModeId = '';
     
     const COIN_DB = {
-        1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }] },
-        2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }] },
-        5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }] },
+        1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }, { y: 1996, price: 1000, desc: "З наборів", xp: 300 }] },
+        2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }, { y: 2003, price: 4500, desc: "Рідкісний рік", xp: 700 }] },
+        5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }, { y: 1992, price: 5000, desc: "Крупна насічка", xp: 900 }] },
         10: { common: 10, rarities: [{ y: 1992, price: 15000, desc: "Шість ягід", xp: 1500 }] },
-        25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }] },
-        50: { common: 50, rarities: [{ y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
+        25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }, { y: 1992, price: 3500, desc: "Англійський чекан", xp: 800 }] },
+        50: { common: 50, rarities: [{ y: 1996, price: 1500, desc: "Рідкісний рік", xp: 400 }, { y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
     };
 
-    const modes = { easy: { search: 10, work: 100, rareChance: 0.3, garbageMin: 10, startMoney: 200 }, medium: { search: 40, work: 60, rareChance: 0.15, garbageMin: 5, startMoney: 200 }, realism: { search: 80, work: 40, rareChance: 0.05, garbageMin: 1, startMoney: 1000 } };
+    const modes = { 
+        easy: { search: 10, work: 100, rareChance: 0.3, garbageMin: 10, startMoney: 200 }, 
+        medium: { search: 40, work: 60, rareChance: 0.15, garbageMin: 5, startMoney: 200 }, 
+        realism: { search: 80, work: 40, rareChance: 0.05, garbageMin: 1, startMoney: 1000 } 
+    };
 
-    // --- 3D ЛОГІКА З ТЕКСТОМ "НУМІЗМАТ" ---
+    // --- 3D СЦЕНА ---
     const container = document.getElementById('container3d');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, container.clientWidth/container.clientHeight, 0.1, 1000);
@@ -146,15 +157,11 @@
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = isGold ? '#ffd700' : '#dcdcdc'; ctx.beginPath(); ctx.arc(256, 256, 250, 0, Math.PI*2); ctx.fill();
         ctx.save(); ctx.translate(256, 256); if (isAvers) ctx.scale(-1, -1); ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.textAlign = 'center';
-        
         if (isIncuse) { ctx.scale(-1, 1); ctx.font = 'bold 120px Arial'; ctx.fillText("UA", 0, 40); } 
         else {
-            // Адаптивний шрифт для довгих слів як "НУМІЗМАТ"
             const fontSize = text.length > 5 ? '80px' : '160px';
-            ctx.font = `bold ${fontSize} Arial`; 
-            ctx.fillText(text, 0, 30); 
-            ctx.font = 'bold 60px Arial'; 
-            ctx.fillText(label, 0, 110); 
+            ctx.font = `bold ${fontSize} Arial`; ctx.fillText(text, 0, 30);
+            ctx.font = 'bold 60px Arial'; ctx.fillText(label, 0, 110);
         }
         ctx.restore(); 
         const tex = new THREE.CanvasTexture(canvas);
@@ -169,20 +176,16 @@
         coinMesh.material[1].needsUpdate = true; coinMesh.material[2].needsUpdate = true;
     }
 
-    // При завантаженні та старті малюємо брендовану монету
+    // --- ЛОГІКА ІГРИ ---
     function startGame(mode) {
         closeLeaderboard(); currentModeId = mode; config = modes[mode];
         const saved = localStorage.getItem('numizmat_' + mode);
         if (saved) { const d = JSON.parse(saved); money = d.m; xp = d.x; myCoins = d.a || []; } 
         else { money = config.startMoney; xp = 0; myCoins = []; }
-        document.getElementById('menu').style.display = 'none'; 
-        document.getElementById('ui-layer').style.display = 'block';
-        
-        update3D("НУМІЗМАТ", 2024, false, 0); 
-        updateUI(); syncOnline();
+        document.getElementById('menu').style.display = 'none'; document.getElementById('ui-layer').style.display = 'block';
+        update3D("НУМІЗМАТ", 2024, false, 0); updateUI(); syncOnline();
     }
 
-    // Решта функцій (search, work, syncOnline тощо) залишаються незмінними з попереднього кроку
     function search() {
         if (money < config.search) return;
         money -= config.search;
@@ -203,24 +206,18 @@
         document.getElementById('modal').style.display = 'block';
         updateUI(); saveProgress(); syncOnline();
     }
-    
-    function openLeaderboard() { document.getElementById('leaderboard-window').style.display = 'flex'; loadLeaderboard(currentModeId || 'easy'); }
-    function closeLeaderboard() { document.getElementById('leaderboard-window').style.display = 'none'; }
-    async function loadLeaderboard(mode) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        const tab = document.getElementById('tab-' + mode); if(tab) tab.classList.add('active');
-        const list = document.getElementById('leaderboard-list'); list.innerHTML = `<div class="loader"></div>`;
-        try {
-            const res = await fetch(`${FB_URL}/leaderboard/${mode}.json?orderBy="money"&limitToLast=10&t=${Date.now()}`);
-            const data = await res.json(); list.innerHTML = "";
-            if (!data) { list.innerHTML = "Порожньо"; return; }
-            const sorted = Object.values(data).filter(u => u && u.money !== undefined).sort((a,b) => b.money - a.money);
-            sorted.forEach((u, i) => {
-                const isMe = u.name === localStorage.getItem('playerName') ? "border:1px solid var(--gold); background:rgba(255,215,0,0.1);" : "";
-                list.innerHTML += `<div class="list-row" style="${isMe}"><span><b>${i+1}.</b> ${u.name}</span><b>₴${u.money}</b></div>`;
-            });
-        } catch (e) { list.innerHTML = "Помилка"; }
+
+    // СКИНУТИ ПРОГРЕС РЕЖИМУ
+    async function resetThisMode() {
+        if (confirm("Почати заново в цьому режимі? Весь прогрес та альбом буде видалено!")) {
+            const n = localStorage.getItem('playerName');
+            if(n && currentModeId) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n}.json`, { method:'DELETE' });
+            localStorage.removeItem('numizmat_' + currentModeId);
+            location.reload();
+        }
     }
+
+    // Решта системних функцій
     function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); syncOnline(); } }
     function keepFound() { myCoins.push(currentCoin); xp += (currentCoin.xp || 5); closeModal(); }
     function sellFound() { money += currentCoin.price; closeModal(); }
@@ -236,13 +233,15 @@
         });
     }
     function sellFromAlbum(i, e) { e.stopPropagation(); money += myCoins[i].price; myCoins.splice(i, 1); updateUI(); renderAlbum(); saveProgress(); syncOnline(); }
-    function updateUI() { document.getElementById('money-val').innerText = money; document.getElementById('xp-val').innerText = xp; document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`; document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`; }
+    function updateUI() { document.getElementById('money-val').innerText = money; document.getElementById('xp-val').innerText = xp; document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`; document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`; document.getElementById('work-btn').disabled = xp < 8; document.getElementById('search-btn').disabled = money < config.search; }
     function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins })); }
+    
     async function syncOnline() {
         const name = localStorage.getItem('playerName'); if (!name || !currentModeId) return;
         const data = { name, money, xp, pin: localStorage.getItem('playerPin'), album: myCoins, lastUpdate: Date.now() };
         try { await fetch(`${FB_URL}/leaderboard/${currentModeId}/${name}.json`, { method: 'PATCH', body: JSON.stringify(data) }); } catch (e) {}
     }
+
     async function checkLogin() {
         let name = localStorage.getItem('playerName');
         if (!name) {
@@ -261,10 +260,26 @@
             }
         }
         document.getElementById('player-display').innerText = "Гравець: " + name;
-        // Початкове малювання монети при вході
         update3D("НУМІЗМАТ", 2024, false, 0);
     }
     function changeNickname() { localStorage.clear(); location.reload(); }
+    function openLeaderboard() { document.getElementById('leaderboard-window').style.display = 'flex'; loadLeaderboard(currentModeId || 'easy'); }
+    function closeLeaderboard() { document.getElementById('leaderboard-window').style.display = 'none'; }
+    async function loadLeaderboard(mode) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const tab = document.getElementById('tab-' + mode); if(tab) tab.classList.add('active');
+        const list = document.getElementById('leaderboard-list'); list.innerHTML = `<div class="loader"></div>`;
+        try {
+            const res = await fetch(`${FB_URL}/leaderboard/${mode}.json?orderBy="money"&limitToLast=10&t=${Date.now()}`);
+            const data = await res.json(); list.innerHTML = "";
+            if (!data) { list.innerHTML = "Порожньо"; return; }
+            const sorted = Object.values(data).filter(u => u && u.money !== undefined).sort((a,b) => b.money - a.money);
+            sorted.forEach((u, i) => {
+                const isMe = u.name === localStorage.getItem('playerName') ? "border:1px solid var(--gold); background:rgba(255,215,0,0.1);" : "";
+                list.innerHTML += `<div class="list-row" style="${isMe}"><span><b>${i+1}.</b> ${u.name}</span><b>₴${u.money}</b></div>`;
+            });
+        } catch (e) { list.innerHTML = "Помилка"; }
+    }
     function animate() { requestAnimationFrame(animate); pivot.rotation.y += 0.015; renderer.render(scene, camera); }
     animate(); window.onload = checkLogin;
 </script>
