@@ -14,10 +14,11 @@
         body { 
             margin: 0; height: 100svh; overflow: hidden; background: #000; 
             font-family: -apple-system, system-ui, sans-serif; color: white;
-            /* Блокуємо системне виділення тексту та меню при довгому натисканні */
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
+            /* Глобальна заборона зуму від подвійного тапу для всієї сторінки */
+            touch-action: manipulation;
         }
 
         #container3d {
@@ -35,7 +36,7 @@
         .stat { background: rgba(30,30,30,0.85); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); font-size: 12px; font-weight: bold; }
 
         .top-btns { display: flex; gap: 5px; }
-        .reset-btn { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; color: #e74c3c; padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .reset-btn { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; color: #e74c3c; padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
         #modal {
             display: none; position: absolute; 
@@ -53,7 +54,6 @@
             display: flex; justify-content: center; gap: 8px; 
             padding: 10px 15px var(--ios-bottom) 15px; 
             background: linear-gradient(transparent, rgba(0,0,0,0.98) 50%);
-            /* touch-action: manipulation дозволяє зум пальцями, але вимикає зум від кліків */
             touch-action: manipulation;
         }
         
@@ -63,7 +63,7 @@
             white-space: pre-line; 
             touch-action: manipulation;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* Вимикає синю рамку при кліку в Safari */
+            -webkit-tap-highlight-color: transparent;
         }
         .btn-blue { background: #3498db; color: white; }
         .btn-gold { background: var(--gold); color: black; }
@@ -73,8 +73,29 @@
         .menu-btn { width: 80%; padding: 20px; margin: 10px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
 
         #album-window { display: none; position: fixed; inset: 0; background: #111; z-index: 2000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
-        #album-list { flex: 1; overflow-y: auto; margin-top: 15px; }
-        .coin-row { background: #1a1a1a; margin-bottom: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; touch-action: manipulation; }
+        
+        /* Список альбому: блокуємо зум для всього скролу */
+        #album-list { 
+            flex: 1; 
+            overflow-y: auto; 
+            margin-top: 15px; 
+            touch-action: manipulation; 
+        }
+
+        .coin-row { 
+            background: #1a1a1a; margin-bottom: 10px; padding: 15px; 
+            border-radius: 15px; display: flex; justify-content: space-between; 
+            align-items: center; border: 1px solid #333; 
+            touch-action: manipulation; 
+        }
+
+        /* Кнопка продажу в альбомі */
+        .sell-btn-album {
+            background: #e74c3c; color: white; border: none; 
+            padding: 8px 12px; border-radius: 10px; font-weight: bold; 
+            cursor: pointer; touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
 
         button:active { transform: scale(0.95); }
         button:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -115,7 +136,7 @@
     <div id="album-window">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0">Ваш Альбом</h2>
-            <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px; cursor:pointer;">&times;</button>
+            <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px; cursor:pointer; touch-action: manipulation;">&times;</button>
         </div>
         <div id="album-list"></div>
     </div>
@@ -150,15 +171,10 @@
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#aa8800'; ctx.beginPath(); ctx.arc(256, 256, 250, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#856a00'; ctx.lineWidth = 15; ctx.stroke();
-        
-        ctx.save();
-        ctx.translate(256, 256);
+        ctx.save(); ctx.translate(256, 256);
         if (isReverse) ctx.rotate(Math.PI); 
-        ctx.fillStyle = '#333333'; 
-        ctx.textAlign = 'center'; ctx.font = 'bold 70px Arial';
-        ctx.fillText("НУМІЗМАТ", 0, 25);
-        ctx.restore();
-        
+        ctx.fillStyle = '#333333'; ctx.textAlign = 'center'; ctx.font = 'bold 70px Arial';
+        ctx.fillText("НУМІЗМАТ", 0, 25); ctx.restore();
         const tex = new THREE.CanvasTexture(canvas);
         tex.needsUpdate = true; return tex;
     }
@@ -174,9 +190,7 @@
     
     coinMesh.rotation.z = Math.PI/2;
     const pivot = new THREE.Group(); pivot.add(coinMesh); scene.add(pivot);
-    
-    pivot.position.y = 0.5; 
-    pivot.scale.set(0.9, 0.9, 0.9);
+    pivot.position.y = 0.5; pivot.scale.set(0.9, 0.9, 0.9);
     camera.position.set(0, 0, 11);
 
     function createFace(text, label, isGold, isAvers, isIncuse, rot = 0) {
@@ -221,44 +235,21 @@
         
         if (roll < config.rareChance) {
             isR = true; 
-            if (roll < 0.01) { 
-                statusText = "Інкузне карбування"; 
-                price = 3000 + Math.floor(Math.random() * 3000);
-                isI = true;
-                xpGain = 1000;
-            } else {
-                rot = [90, 180, 270][Math.floor(Math.random()*3)];
-                statusText = `Поворот ${rot}°`; 
-                price = 150 + Math.floor(Math.random() * 200);
-                xpGain = 80;
-            }
-        } else {
-            statusText = "Без браку"; 
-            price = config.garbageMin + Math.floor(Math.random() * 8);
-            xpGain = 5;
-        }
+            if (roll < 0.01) { statusText = "Інкузне карбування"; price = 3000 + Math.floor(Math.random() * 3000); isI = true; xpGain = 1000; } 
+            else { rot = [90, 180, 270][Math.floor(Math.random()*3)]; statusText = `Поворот ${rot}°`; price = 150 + Math.floor(Math.random() * 200); xpGain = 80; }
+        } else { statusText = "Без браку"; price = config.garbageMin + Math.floor(Math.random() * 8); xpGain = 5; }
         
         currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
         update3D(n, y, isI, rot);
         
         document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
-        document.getElementById('coin-desc').innerHTML = `<br>
-            <b>${n} коп. ${y} року</b><br><br>
-            Стан: <span style="color:${isR ? 'var(--gold)' : '#3498db'}; font-weight:bold;">${statusText}</span><br><br>
-            Оцінка: <span style="color:#2ecc71; font-weight:bold; font-size:15px;">${price} ₴</span><br>
-        `;
+        document.getElementById('coin-desc').innerHTML = `<br><b>${n} коп. ${y} року</b><br><br>Стан: <span style="color:${isR ? 'var(--gold)' : '#3498db'}; font-weight:bold;">${statusText}</span><br><br>Оцінка: <span style="color:#2ecc71; font-weight:bold; font-size:15px;">${price} ₴</span><br>`;
         document.getElementById('modal').style.display = 'block';
         updateUI(); saveProgress();
     }
 
     function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); } }
-    
-    function keepFound() { 
-        myCoins.push(currentCoin); 
-        xp += (currentCoin.xp || 5); 
-        closeModal(); 
-    }
-
+    function keepFound() { myCoins.push(currentCoin); xp += (currentCoin.xp || 5); closeModal(); }
     function sellFound() { money += currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); }
     function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins })); }
@@ -269,7 +260,7 @@
         const list = document.getElementById('album-list'); list.innerHTML = '';
         myCoins.forEach((c, i) => {
             const row = document.createElement('div'); row.className = 'coin-row';
-            row.innerHTML = `<div><b>${c.n}к ${c.y}</b><br><small style="color:${c.rare?'var(--gold)':'#888'}">Стан: ${c.e}</small></div><button style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="sellFromAlbum(${i}, event)">${c.price}₴</button>`;
+            row.innerHTML = `<div><b>${c.n}к ${c.y}</b><br><small style="color:${c.rare?'var(--gold)':'#888'}">Стан: ${c.e}</small></div><button class="sell-btn-album" onclick="sellFromAlbum(${i}, event)">${c.price}₴</button>`;
             row.onclick = () => { update3D(c.n, c.y, c.inc, c.rot); toggleAlbum(); };
             list.appendChild(row);
         });
@@ -287,11 +278,8 @@
     animate();
 
     window.addEventListener('resize', () => { 
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        renderer.setSize(width, height); 
-        camera.aspect = width / height; 
-        camera.updateProjectionMatrix(); 
+        const width = container.clientWidth; const height = container.clientHeight;
+        renderer.setSize(width, height); camera.aspect = width / height; camera.updateProjectionMatrix(); 
     });
 </script>
 </body>
