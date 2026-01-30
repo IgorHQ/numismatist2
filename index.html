@@ -14,7 +14,10 @@
         body { 
             margin: 0; height: 100svh; overflow: hidden; background: #000; 
             font-family: -apple-system, system-ui, sans-serif; color: white;
+            /* Блокуємо системне виділення тексту та меню при довгому натисканні */
             -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         #container3d {
@@ -50,6 +53,8 @@
             display: flex; justify-content: center; gap: 8px; 
             padding: 10px 15px var(--ios-bottom) 15px; 
             background: linear-gradient(transparent, rgba(0,0,0,0.98) 50%);
+            /* touch-action: manipulation дозволяє зум пальцями, але вимикає зум від кліків */
+            touch-action: manipulation;
         }
         
         .nav-btn { 
@@ -58,17 +63,18 @@
             white-space: pre-line; 
             touch-action: manipulation;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* Вимикає синю рамку при кліку в Safari */
         }
         .btn-blue { background: #3498db; color: white; }
         .btn-gold { background: var(--gold); color: black; }
         .btn-purple { background: #9b59b6; color: white; }
 
         #menu { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .menu-btn { width: 80%; padding: 20px; margin: 10px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .menu-btn { width: 80%; padding: 20px; margin: 10px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
 
         #album-window { display: none; position: fixed; inset: 0; background: #111; z-index: 2000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
         #album-list { flex: 1; overflow-y: auto; margin-top: 15px; }
-        .coin-row { background: #1a1a1a; margin-bottom: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .coin-row { background: #1a1a1a; margin-bottom: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; touch-action: manipulation; }
 
         button:active { transform: scale(0.95); }
         button:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -206,7 +212,6 @@
         updateUI();
     }
 
-    // ОНОВЛЕНА ЛОГІКА ОЦІНКИ ТА ДОСВІДУ (Citations:)
     function search() {
         if (money < config.search) return;
         money -= config.search;
@@ -218,19 +223,19 @@
             isR = true; 
             if (roll < 0.01) { 
                 statusText = "Інкузне карбування"; 
-                price = 3000 + Math.floor(Math.random() * 3000); //
+                price = 3000 + Math.floor(Math.random() * 3000);
                 isI = true;
-                xpGain = 1000; //
+                xpGain = 1000;
             } else {
                 rot = [90, 180, 270][Math.floor(Math.random()*3)];
                 statusText = `Поворот ${rot}°`; 
-                price = 150 + Math.floor(Math.random() * 200); //
-                xpGain = 80; //
+                price = 150 + Math.floor(Math.random() * 200);
+                xpGain = 80;
             }
         } else {
             statusText = "Без браку"; 
-            price = config.garbageMin + Math.floor(Math.random() * 8); //
-            xpGain = 5; //
+            price = config.garbageMin + Math.floor(Math.random() * 8);
+            xpGain = 5;
         }
         
         currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
@@ -248,7 +253,6 @@
 
     function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); } }
     
-    // ОНОВЛЕНО: Нарахування досвіду за монету (Citations:)
     function keepFound() { 
         myCoins.push(currentCoin); 
         xp += (currentCoin.xp || 5); 
