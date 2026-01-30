@@ -22,7 +22,6 @@
             height: 60svh; z-index: 1;
         }
 
-        /* Дозволяємо проходження подій крізь шар інтерфейсу, крізь кнопки - ні */
         #ui-layer { display: none; position: absolute; inset: 0; z-index: 10; pointer-events: none; }
         #ui-layer button, #modal, #album-window { pointer-events: auto; }
         
@@ -57,7 +56,7 @@
             flex: 1; padding: 18px 5px; border-radius: 15px; border: none; 
             font-weight: bold; font-size: 10px; line-height: 1.3; 
             white-space: pre-line; 
-            touch-action: manipulation; /* Тільки тут для захисту від зуму */
+            touch-action: manipulation;
             cursor: pointer;
         }
         .btn-blue { background: #3498db; color: white; }
@@ -140,7 +139,34 @@
     const light = new THREE.DirectionalLight(0xffffff, 2.5); light.position.set(2, 2, 5); scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-    const coinMesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.18, 64), [new THREE.MeshStandardMaterial({color: 0xaa8800}), new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()]);
+    // Виправлена функція: сірий колір та підтримка перевороту
+    function createLoadingFace(isReverse = false) {
+        const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#aa8800'; ctx.beginPath(); ctx.arc(256, 256, 250, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#856a00'; ctx.lineWidth = 15; ctx.stroke();
+        
+        ctx.save();
+        ctx.translate(256, 256);
+        if (isReverse) ctx.rotate(Math.PI); // Перевертаємо текст на звороті
+        ctx.fillStyle = '#333333'; // Темно-сірий колір для чіткості
+        ctx.textAlign = 'center'; ctx.font = 'bold 70px Arial';
+        ctx.fillText("НУМІЗМАТ", 0, 25);
+        ctx.restore();
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.needsUpdate = true; return tex;
+    }
+
+    const coinMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(2, 2, 0.18, 64), 
+        [
+            new THREE.MeshStandardMaterial({color: 0xaa8800}), 
+            new THREE.MeshStandardMaterial({map: createLoadingFace(false)}), // Аверс
+            new THREE.MeshStandardMaterial({map: createLoadingFace(true)})   // Реверс (перевернутий)
+        ]
+    );
+    
     coinMesh.rotation.z = Math.PI/2;
     const pivot = new THREE.Group(); pivot.add(coinMesh); scene.add(pivot);
     
@@ -174,13 +200,10 @@
         const saved = localStorage.getItem('numizmat_' + mode);
         if (saved) { const data = JSON.parse(saved); money = data.m; xp = data.x; myCoins = data.a || []; } 
         else { money = config.startMoney; xp = 0; myCoins = []; }
-        
         document.getElementById('menu').style.display = 'none';
         document.getElementById('ui-layer').style.display = 'block';
-        
         document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`;
         document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`;
-        
         updateUI();
     }
 
@@ -204,12 +227,11 @@
         update3D(n, y, isI, rot);
         
         document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
-        document.getElementById('coin-desc').innerHTML = `
-            <b>${n} коп. ${y} року</b><br>
-            Стан: <span style="color:${isR ? 'var(--gold)' : '#3498db'}; font-weight:bold;">${statusText}</span><br>
-            Оцінка: <span style="color:#2ecc71; font-weight:bold; font-size:15px;">${price} ₴</span>
+        document.getElementById('coin-desc').innerHTML = `<br>
+            <b>${n} коп. ${y} року</b><br><br>
+            Стан: <span style="color:${isR ? 'var(--gold)' : '#3498db'}; font-weight:bold;">${statusText}</span><br><br>
+            Оцінка: <span style="color:#2ecc71; font-weight:bold; font-size:15px;">${price} ₴</span><br>
         `;
-        
         document.getElementById('modal').style.display = 'block';
         updateUI(); saveProgress();
     }
@@ -233,7 +255,6 @@
     }
     
     function sellFromAlbum(i, e) { e.stopPropagation(); money += myCoins[i].price; myCoins.splice(i, 1); updateUI(); renderAlbum(); saveProgress(); }
-    
     function updateUI() { 
         document.getElementById('money-val').innerText = money; 
         document.getElementById('xp-val').innerText = xp; 
