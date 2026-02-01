@@ -9,30 +9,33 @@
         body { margin: 0; height: 100svh; overflow: hidden; background: #000; font-family: -apple-system, system-ui, sans-serif; color: white; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         #container3d { position: absolute; top: 0; left: 0; width: 100%; height: 55svh; z-index: 1; }
         #ui-layer { display: none; position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-        #ui-layer button, #modal, #album-window, #leaderboard-window { pointer-events: auto; }
+        #ui-layer button, #modal, #album-window, #leaderboard-window, #auction-window { pointer-events: auto; }
         
         #top-bar { position: absolute; top: calc(10px + env(safe-area-inset-top, 20px)); left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
         .stat-group { display: flex; flex-direction: column; gap: 4px; }
         .stat { background: rgba(30,30,30,0.85); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); font-size: 12px; font-weight: bold; min-width: 60px; text-align: center; }
-        .income-tag { font-size: 9px; color: #2ecc71; font-weight: bold; margin-left: 5px; }
-        
-        .reset-btn { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #e74c3c; padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .income-tag { font-size: 10px; color: #2ecc71; font-weight: bold; margin-left: 5px; }
 
-        #modal { display: none; position: absolute; bottom: calc(90px + var(--ios-bottom)); left: 50%; transform: translateX(-50%); background: rgba(15,15,15,0.98); padding: 10px 15px; border-radius: 15px; text-align: center; border: 1px solid var(--gold); width: 85%; max-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 100; }
+        .top-btns { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+        .btn-top { padding: 6px 12px; border-radius: 10px; border: none; font-size: 11px; font-weight: bold; color: white; cursor: pointer; min-width: 70px; }
+
+        #modal { display: none; position: absolute; bottom: calc(100px + var(--ios-bottom)); left: 50%; transform: translateX(-50%); background: rgba(15,15,15,0.98); padding: 15px; border-radius: 15px; text-align: center; border: 1px solid var(--gold); width: 85%; max-width: 280px; z-index: 100; box-shadow: 0 0 20px rgba(241, 196, 15, 0.2); }
+        
         .main-nav { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; padding: 10px 15px var(--ios-bottom) 15px; background: linear-gradient(transparent, rgba(0,0,0,1) 70%); }
-        .nav-btn { flex: 1; padding: 15px 5px; border-radius: 15px; border: none; font-weight: bold; font-size: 10px; line-height: 1.2; white-space: pre-line; cursor: pointer; }
+        .nav-btn { flex: 1; padding: 15px 5px; border-radius: 15px; border: none; font-weight: bold; font-size: 10px; line-height: 1.2; cursor: pointer; text-transform: uppercase; }
         .btn-blue { background: #3498db; color: white; }
         .btn-gold { background: var(--gold); color: black; }
         .btn-purple { background: #9b59b6; color: white; }
+        .btn-orange { background: #e67e22; color: white; }
 
         #menu { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .menu-btn { width: 80%; padding: 18px; margin: 8px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; }
 
-        #album-window, #leaderboard-window { display: none; position: fixed; inset: 0; background: #111; z-index: 4000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
+        #album-window, #leaderboard-window, #auction-window { display: none; position: fixed; inset: 0; background: #111; z-index: 5000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
         .list-container { flex: 1; overflow-y: auto; margin-top: 15px; }
         .list-row { background: #1a1a1a; margin-bottom: 8px; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; border: 1px solid #333; align-items: center;}
         
-        button:active { transform: scale(0.92); opacity: 0.8; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -46,7 +49,8 @@
     <button class="menu-btn" onclick="startGame('easy')">Простий</button>
     <button class="menu-btn" onclick="startGame('medium')">Середній</button>
     <button class="menu-btn" onclick="startGame('realism')">Реалізм</button>
-    <button class="menu-btn" style="border-color:#3498db; margin-top: 15px;" onclick="openLeaderboard()">🏆 РЕЙТИНГ</button>
+    <button class="menu-btn" style="border-color:#3498db; margin-top: 15px;" onclick="openAuctionHouse()">🏛️ АУКЦІОННИЙ ДІМ</button>
+    <button class="menu-btn" style="border-color:#555; font-size: 14px;" onclick="openLeaderboard()">🏆 РЕЙТИНГ</button>
 </div>
 
 <div id="ui-layer">
@@ -55,27 +59,19 @@
             <div class="stat">₴ <span id="money-val">0</span><span id="rate-display" class="income-tag"></span></div>
             <div class="stat">XP <span id="xp-val" style="color:var(--blue)">0</span></div>
         </div>
-        <div style="display:flex; gap:5px;">
-            <button class="reset-btn" onclick="resetThisMode()">Заново</button>
-            <button class="stat" style="background:#333; border:none; color:white;" onclick="location.reload()">Меню</button>
+        <div class="top-btns">
+            <button class="btn-top" style="background:#444;" onclick="location.reload()">Меню</button>
+            <button class="btn-top" style="background:#c0392b;" onclick="changeNickname()">Заново</button>
         </div>
     </div>
 
     <div id="modal">
-        <h3 id="m-title" style="margin:0; color:var(--gold)"></h3>
-        <div id="coin-desc" style="margin:8px 0; font-size:13px;"></div>
+        <h3 id="m-title" style="margin:0; color:var(--gold); font-size:18px;"></h3>
+        <div id="coin-desc" style="margin:10px 0; font-size:14px; line-height:1.4;"></div>
         <div style="display:flex; gap:8px;">
             <button class="nav-btn btn-blue" onclick="keepFound()">В Альбом</button>
             <button class="nav-btn" style="background:#444; color:white;" onclick="sellFound()">Продати</button>
         </div>
-    </div>
-
-    <div id="album-window">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="margin:0">Колекція</h2>
-            <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px;">&times;</button>
-        </div>
-        <div id="album-list" class="list-container"></div>
     </div>
 
     <nav class="main-nav">
@@ -85,10 +81,31 @@
     </nav>
 </div>
 
+<div id="album-window">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0">Колекція</h2>
+        <button onclick="toggleAlbum()" style="background:none; border:none; color:#ff4757; font-size:40px;">&times;</button>
+    </div>
+    <div id="album-list" class="list-container"></div>
+</div>
+
+<div id="auction-window">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0">Аукціон (48г)</h2>
+        <button onclick="closeAuctionHouse()" style="background:none; border:none; color:#ff4757; font-size:40px;">&times;</button>
+    </div>
+    <div id="auction-list" class="list-container"></div>
+</div>
+
 <div id="leaderboard-window">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 style="margin:0">🏆 ТОП-10</h2>
         <button onclick="closeLeaderboard()" style="color:red; background:none; border:none; font-size:40px;">&times;</button>
+    </div>
+    <div style="display:flex; gap:5px; margin-top:10px;">
+        <button onclick="loadLeaderboard('easy')" style="flex:1; font-size:10px; padding:5px;">Легкий</button>
+        <button onclick="loadLeaderboard('medium')" style="flex:1; font-size:10px; padding:5px;">Середній</button>
+        <button onclick="loadLeaderboard('realism')" style="flex:1; font-size:10px; padding:5px;">Реал</button>
     </div>
     <div id="leaderboard-list" class="list-container"></div>
 </div>
@@ -99,21 +116,6 @@
 <script>
     const FB_URL = "https://numismatis-c1cce-default-rtdb.europe-west1.firebasedatabase.app/";
     let money = 0, xp = 0, myCoins = [], currentCoin = null, config = {}, currentModeId = '';
-    
-    const COIN_DB = {
-        1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }] },
-        2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }] },
-        5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }] },
-        10: { common: 10, rarities: [{ y: 1992, price: 15000, desc: "Шість ягід", xp: 1500 }] },
-        25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }] },
-        50: { common: 50, rarities: [{ y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
-    };
-
-    const modes = { 
-        easy: { search: 10, work: 100, rareChance: 0.3, garbageMin: 10, startMoney: 200 }, 
-        medium: { search: 40, work: 60, rareChance: 0.15, garbageMin: 5, startMoney: 200 }, 
-        realism: { search: 80, work: 40, rareChance: 0.05, garbageMin: 1, startMoney: 1000 } 
-    };
 
     // --- 3D ENGINE ---
     const container = document.getElementById('container3d');
@@ -135,11 +137,7 @@
         ctx.fillStyle = isGold ? '#ffd700' : '#dcdcdc'; ctx.beginPath(); ctx.arc(256, 256, 250, 0, Math.PI*2); ctx.fill();
         ctx.save(); ctx.translate(256, 256); if (isAvers) ctx.scale(-1, -1); ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.textAlign = 'center';
         if (isIncuse) { ctx.scale(-1, 1); ctx.font = 'bold 120px Arial'; ctx.fillText("UA", 0, 40); } 
-        else {
-            const fontSize = text.length > 5 ? '80px' : '160px';
-            ctx.font = `bold ${fontSize} Arial`; ctx.fillText(text, 0, 30);
-            ctx.font = 'bold 60px Arial'; ctx.fillText(label, 0, 110);
-        }
+        else { ctx.font = `bold ${text.length > 5 ? '80px' : '160px'} Arial`; ctx.fillText(text, 0, 30); ctx.font = 'bold 60px Arial'; ctx.fillText(label, 0, 110); }
         ctx.restore(); 
         const tex = new THREE.CanvasTexture(canvas);
         if (rot !== 0) { tex.center.set(0.5, 0.5); tex.rotation = (rot * Math.PI) / 180; }
@@ -155,152 +153,135 @@
 
     // --- GAME LOGIC ---
     function startGame(mode) {
-        closeLeaderboard(); currentModeId = mode; config = modes[mode];
-        const saved = localStorage.getItem('numizmat_' + mode);
-        if (saved) {
-            const d = JSON.parse(saved);
-            money = d.m; xp = d.x; myCoins = d.a || [];
-            
-            // Offline Income (max 12h)
-            if (d.lastTime) {
-                let mins = Math.floor((Date.now() - d.lastTime) / 60000);
-                if (mins > 720) mins = 720; 
-                if (mins > 0) {
-                    let rate = 0;
-                    myCoins.forEach(c => { if(c.rare) rate += c.price * 0.0001; });
-                    const offIncome = rate * mins;
-                    if (offIncome > 0) {
-                        money += offIncome;
-                        alert(`Виставка принесла ₴${offIncome.toFixed(2)} за ${mins} хв.`);
-                    }
-                }
-            }
-        } else { money = config.startMoney; xp = 0; myCoins = []; }
-        
+        currentModeId = mode; 
+        config = { easy: {s:10, w:100, r:0.3}, medium: {s:40, w:60, r:0.15}, realism: {s:80, w:40, r:0.05} }[mode];
+        const saved = JSON.parse(localStorage.getItem('numizmat_' + mode) || '{"m":200,"x":0,"a":[]}');
+        money = saved.m; xp = saved.x; myCoins = saved.a;
         document.getElementById('menu').style.display = 'none';
         document.getElementById('ui-layer').style.display = 'block';
-        update3D("НУМІЗМАТ", 2024, false, 0);
-        updateUI(); syncOnline();
+        updateUI(); 
+        finalizeAuctions();
         
-        // Start passive income ticker
         setInterval(() => {
-            let income = 0;
-            myCoins.forEach(c => { if(c.rare) income += c.price * 0.0001; });
-            if (income > 0) {
-                money += income;
-                console.log(`+₴${income.toFixed(4)} (Passive)`);
-                updateUI();
-                saveProgress();
-            }
+            let inc = 0; myCoins.forEach(c => { if(c.rare) inc += c.price * 0.0001; });
+            if (inc > 0) { money += inc; updateUI(); saveProgress(); syncOnline(); }
         }, 60000);
-    }
-
-    function search() {
-        if (money < config.search) return;
-        money -= config.search;
-        const nominals = [1, 2, 5, 10, 25, 50];
-        const n = nominals[Math.floor(Math.random() * nominals.length)];
-        const y = 1992 + Math.floor(Math.random() * 30); 
-        let price = 0, statusText = "", isR = false, xpGain = 5, rot = 0, isI = false;
-        const rareMatch = COIN_DB[n].rarities.find(r => r.y === y);
-
-        if (rareMatch && Math.random() < 0.2) { 
-            isR = true; statusText = rareMatch.desc; price = rareMatch.price; xpGain = rareMatch.xp; 
-        } else if (Math.random() < config.rareChance) {
-            isR = true; 
-            if (Math.random() < 0.1) { statusText = "Інкуз"; price = 4500; isI = true; xpGain = 600; } 
-            else { rot = [90, 180, 270][Math.floor(Math.random() * 3)]; statusText = `Поворот ${rot}°`; price = 300 + Math.floor(Math.random() * 200); xpGain = 60; }
-        } else { 
-            statusText = "Гарний стан"; price = COIN_DB[n].common + config.garbageMin + Math.floor(Math.random() * 5); 
-        }
-
-        currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
-        update3D(n, y, isI, rot);
-        document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
-        document.getElementById('coin-desc').innerHTML = `<b>${n}к ${y}</b> — ₴${price}<br><small>${statusText}</small>`;
-        document.getElementById('modal').style.display = 'block';
-        updateUI(); saveProgress(); syncOnline();
     }
 
     function updateUI() {
         document.getElementById('money-val').innerText = Math.floor(money);
         document.getElementById('xp-val').innerText = xp;
-        
-        let rate = 0;
-        myCoins.forEach(c => { if(c.rare) rate += c.price * 0.0001; });
+        document.getElementById('work-btn').innerText = `Робота\n+₴${config.w}`;
+        document.getElementById('search-btn').innerText = `Пошук\n-₴${config.s}`;
+        let rate = 0; myCoins.forEach(c => { if(c.rare) rate += c.price * 0.0001; });
         document.getElementById('rate-display').innerText = rate > 0 ? `+₴${rate.toFixed(2)}/хв` : "";
-
-        document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`;
-        document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`;
-        document.getElementById('work-btn').disabled = xp < 8;
-        document.getElementById('search-btn').disabled = money < config.search;
     }
 
-    function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins, lastTime: Date.now() })); }
-
-    async function syncOnline() {
-        const name = localStorage.getItem('playerName'); if (!name || !currentModeId) return;
-        const data = { name, money, xp, pin: localStorage.getItem('playerPin'), album: myCoins, lastUpdate: Date.now() };
-        try { await fetch(`${FB_URL}/leaderboard/${currentModeId}/${name}.json`, { method: 'PATCH', body: JSON.stringify(data) }); } catch (e) {}
-    }
-
-    // Utilities
-    function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); syncOnline(); } }
-    function keepFound() { myCoins.push(currentCoin); xp += (currentCoin.xp || 5); closeModal(); }
-    function sellFound() { money += currentCoin.price; closeModal(); }
-    function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); syncOnline(); }
-    function toggleAlbum() { const w = document.getElementById('album-window'); w.style.display = (w.style.display==='flex')?'none':'flex'; if(w.style.display==='flex') renderAlbum(); }
-    function renderAlbum() {
-        const list = document.getElementById('album-list'); list.innerHTML = '';
-        myCoins.forEach((c, i) => {
-            const row = document.createElement('div'); row.className = 'list-row';
-            row.innerHTML = `<div><b>${c.n}к ${c.y}</b><br><small style="color:${c.rare?'var(--gold)':'#888'}">${c.e}</small></div><button style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:bold;" onclick="sellFromAlbum(${i}, event)">${c.price}₴</button>`;
-            row.onclick = () => { update3D(c.n, c.y, c.inc, c.rot); toggleAlbum(); };
-            list.appendChild(row);
-        });
-    }
-    function sellFromAlbum(i, e) { e.stopPropagation(); money += myCoins[i].price; myCoins.splice(i, 1); updateUI(); renderAlbum(); saveProgress(); syncOnline(); }
-    async function resetThisMode() { if (confirm("Почати заново?")) { const n = localStorage.getItem('playerName'); if(n) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n}.json`, { method:'DELETE' }); localStorage.removeItem('numizmat_' + currentModeId); location.reload(); } }
-    
-    async function checkLogin() {
-        let name = localStorage.getItem('playerName');
-        if (!name) {
-            name = prompt("Нікнейм:"); if (!name) return checkLogin();
-            name = name.replace(/[.#$[\]]/g, "").substring(0, 12);
-            const res = await fetch(`${FB_URL}/users_auth/${name}.json`);
-            const auth = await res.json();
-            if (auth) {
-                let pin = prompt("PIN:");
-                if (pin === auth.pin) { localStorage.setItem('playerName', name); localStorage.setItem('playerPin', pin); location.reload(); }
-                else { alert("Помилка!"); return checkLogin(); }
-            } else {
-                let pin = prompt("Придумайте PIN:");
-                localStorage.setItem('playerName', name); localStorage.setItem('playerPin', pin || "0000");
-                await fetch(`${FB_URL}/users_auth/${name}.json`, { method: 'PUT', body: JSON.stringify({ pin: pin || "0000" }) });
+    async function finalizeAuctions() {
+        try {
+            const res = await fetch(`${FB_URL}/auctions.json`);
+            const data = await res.json(); if (!data) return;
+            const myName = localStorage.getItem('playerName');
+            for (let id in data) {
+                const a = data[id];
+                if (Date.now() > a.endTime) {
+                    if (a.highestBidder === myName) myCoins.push(a.coin);
+                    else if (a.seller === myName) { if (a.highestBidder) money += a.currentBid; else myCoins.push(a.coin); }
+                    await fetch(`${FB_URL}/auctions/${id}.json`, { method:'DELETE' });
+                    saveProgress(); updateUI();
+                }
             }
-        }
-        document.getElementById('player-display').innerText = "Гравець: " + name;
-        update3D("НУМІЗМАТ", 2024, false, 0);
+        } catch(e) {}
     }
 
-    function changeNickname() { localStorage.clear(); location.reload(); }
+    function search() {
+        if (money < config.s) return;
+        money -= config.s;
+        const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)];
+        const y = 1992 + Math.floor(Math.random()*30);
+        let isR = Math.random() < config.r;
+        currentCoin = { n, y, e: isR ? "Рідкісна особливість" : "Звичайний обіг", price: isR ? 1500 : n+10, rare: isR };
+        update3D(n, y, false, 0);
+        document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
+        document.getElementById('coin-desc').innerHTML = `<b>${n} коп. ${y} року</b><br>Ціна: ₴${currentCoin.price}<br><small>${currentCoin.e}</small>`;
+        document.getElementById('modal').style.display = 'block';
+        updateUI();
+    }
+
+    function toggleAlbum() { 
+        const win = document.getElementById('album-window');
+        win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+        if(win.style.display === 'flex') {
+            const list = document.getElementById('album-list'); list.innerHTML = '';
+            myCoins.forEach((c, i) => {
+                let auctionBtn = c.rare ? `<button onclick="startAuction(${i})" class="nav-btn btn-orange" style="width:85px; padding:8px; margin-right:5px">АУКЦІОН</button>` : '';
+                list.innerHTML += `<div class="list-row">
+                    <div style="flex:1" onclick="update3D(${c.n}, ${c.y}, false, 0); toggleAlbum();">
+                        <b>${c.n}к ${c.y}</b><br><small>${c.e}</small>
+                    </div>
+                    <div style="display:flex; align-items:center;">${auctionBtn}<button onclick="sellFromAlbum(${i})" class="nav-btn" style="background:#e74c3c; color:white; width:70px; padding:8px">₴${c.price}</button></div>
+                </div>`;
+            });
+        }
+    }
+
     function openLeaderboard() { document.getElementById('leaderboard-window').style.display = 'flex'; loadLeaderboard(currentModeId || 'easy'); }
     function closeLeaderboard() { document.getElementById('leaderboard-window').style.display = 'none'; }
-    async function loadLeaderboard(mode) {
+    async function loadLeaderboard(m) {
         const list = document.getElementById('leaderboard-list'); list.innerHTML = "Завантаження...";
-        try {
-            const res = await fetch(`${FB_URL}/leaderboard/${mode}.json?orderBy="money"&limitToLast=10`);
-            const data = await res.json(); list.innerHTML = "";
-            if (!data) return;
-            Object.values(data).sort((a,b) => b.money - a.money).forEach((u, i) => {
-                list.innerHTML += `<div class="list-row"><span>${i+1}. ${u.name}</span><b>₴${Math.floor(u.money)}</b></div>`;
-            });
-        } catch(e) { list.innerHTML = "Помилка мережі"; }
+        const res = await fetch(`${FB_URL}/leaderboard/${m}.json`);
+        const data = await res.json(); list.innerHTML = "";
+        if(data) Object.values(data).sort((a,b)=>b.money-a.money).slice(0,10).forEach((u,i)=>list.innerHTML += `<div class="list-row"><span>${i+1}. ${u.name}</span><b>₴${Math.floor(u.money)}</b></div>`);
     }
 
-    function animate() { requestAnimationFrame(animate); pivot.rotation.y += 0.015; renderer.render(scene, camera); }
-    animate();
-    window.onload = checkLogin;
+    async function openAuctionHouse() {
+        document.getElementById('auction-window').style.display = 'flex';
+        const list = document.getElementById('auction-list');
+        list.innerHTML = "Завантаження...";
+        const res = await fetch(`${FB_URL}/auctions.json`);
+        const data = await res.json(); list.innerHTML = "";
+        if(data) Object.keys(data).forEach(id => {
+            const a = data[id];
+            list.innerHTML += `<div class="list-row">
+                <div style="flex:1"><b>${a.coin.n}к ${a.coin.y}</b><br><small>₴${a.currentBid}</small></div>
+                <button class="nav-btn btn-gold" style="width:80px" onclick="bidOnAuction('${id}')">СТАВКА</button>
+            </div>`;
+        });
+    }
+    function closeAuctionHouse() { document.getElementById('auction-window').style.display = 'none'; }
+
+    async function startAuction(i) {
+        const c = myCoins[i]; const p = prompt("Стартова ціна:", c.price); if (!p) return;
+        const name = localStorage.getItem('playerName');
+        await fetch(`${FB_URL}/auctions/${Date.now()}_${name}.json`, { method:'PUT', body: JSON.stringify({ seller: name, coin: c, currentBid: Number(p), endTime: Date.now() + 172800000 }) });
+        myCoins.splice(i, 1); toggleAlbum(); updateUI(); saveProgress();
+    }
+    async function bidOnAuction(id) {
+        const res = await fetch(`${FB_URL}/auctions/${id}.json`); const a = await res.json();
+        const next = Math.floor(a.currentBid * 1.1); if (money < next) return alert("Мало грошей!");
+        await fetch(`${FB_URL}/auctions/${id}.json`, { method:'PATCH', body: JSON.stringify({ currentBid: next, highestBidder: localStorage.getItem('playerName') }) });
+        money -= next; updateUI(); saveProgress(); openAuctionHouse();
+    }
+
+    function work() { if(xp >= 8) { xp -= 8; money += config.w; updateUI(); saveProgress(); syncOnline(); } }
+    function keepFound() { myCoins.push(currentCoin); xp += 10; closeModal(); }
+    function sellFound() { money += currentCoin.price; closeModal(); }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); syncOnline(); }
+    function sellFromAlbum(i) { money += myCoins[i].price; myCoins.splice(i, 1); toggleAlbum(); updateUI(); saveProgress(); }
+    function saveProgress() { if(currentModeId) localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins })); }
+    async function syncOnline() {
+        const n = localStorage.getItem('playerName');
+        if (n && currentModeId) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n}.json`, { method:'PATCH', body: JSON.stringify({ name:n, money, xp }) });
+    }
+    async function checkLogin() {
+        let name = localStorage.getItem('playerName');
+        if (!name) { name = prompt("Нікнейм:"); if (!name) return checkLogin(); localStorage.setItem('playerName', name); }
+        document.getElementById('player-display').innerText = "Гравець: " + name;
+        update3D("НУМІЗМАТ", 2026, false, 0);
+    }
+    function changeNickname() { localStorage.clear(); location.reload(); }
+    function animate() { requestAnimationFrame(animate); pivot.rotation.y += 0.01; renderer.render(scene, camera); }
+    animate(); window.onload = checkLogin;
 </script>
 </body>
 </html>
