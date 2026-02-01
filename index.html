@@ -194,7 +194,7 @@
     }
 
     function search() {
-        if (Math.floor(money) < config.s) { alert("Мало грошей для пошуку!"); return; }
+        if (Math.floor(money) < config.s) { alert("Мало грошей!"); return; }
         money -= config.s;
         const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)];
         const y = 1992 + Math.floor(Math.random()*30);
@@ -233,19 +233,28 @@
         if(data) Object.values(data).sort((a,b)=>b.money-a.money).slice(0,10).forEach((u,i)=>list.innerHTML += `<div class="list-row"><span>${i+1}. ${u.name}</span><b>₴${Math.floor(u.money)}</b></div>`);
     }
 
+    // --- ОНОВЛЕНО: ДОДАНО ВАРТІСТЬ ПРИ ПОШУКУ (ЦІНУ ЛОТА) ---
     async function openAuctionHouse() {
         document.getElementById('auction-window').style.display = 'flex';
         const list = document.getElementById('auction-list');
         list.innerHTML = "Завантаження...";
-        const res = await fetch(`${FB_URL}/auctions.json`);
-        const data = await res.json(); list.innerHTML = "";
-        if(data) Object.keys(data).forEach(id => {
-            const a = data[id];
-            list.innerHTML += `<div class="list-row">
-                <div style="flex:1"><b>${a.coin.n}к ${a.coin.y}</b><br><small>₴${a.currentBid}</small></div>
-                <button class="nav-btn btn-gold" style="width:80px" onclick="bidOnAuction('${id}')">СТАВКА</button>
-            </div>`;
-        });
+        try {
+            const res = await fetch(`${FB_URL}/auctions.json`);
+            const data = await res.json(); list.innerHTML = "";
+            if (!data) return list.innerHTML = "<center>Поки що немає лотів</center>";
+            Object.keys(data).forEach(id => {
+                const a = data[id];
+                list.innerHTML += `<div class="list-row">
+                    <div style="flex:1">
+                        <b>${a.coin.n}к ${a.coin.y}</b><br>
+                        <small style="color:#3498db">${a.coin.e}</small><br>
+                        <small style="color:#aaa">Оцінка: ₴${a.coin.price}</small> | 
+                        <b style="color:var(--gold)">Ставка: ₴${a.currentBid}</b>
+                    </div>
+                    <button class="nav-btn btn-gold" style="width:80px" onclick="bidOnAuction('${id}')">СТАВКА</button>
+                </div>`;
+            });
+        } catch(e) { list.innerHTML = "Помилка завантаження"; }
     }
     function closeAuctionHouse() { document.getElementById('auction-window').style.display = 'none'; }
 
@@ -256,22 +265,15 @@
         myCoins.splice(i, 1); toggleAlbum(); updateUI(); saveProgress();
     }
     
-    // --- ВИПРАВЛЕНИЙ АУКЦІОН (ПЕРЕВІРКА ГРОШЕЙ) ---
     async function bidOnAuction(id) {
         const res = await fetch(`${FB_URL}/auctions/${id}.json`); const a = await res.json();
-        const nextBid = Math.ceil(a.currentBid * 1.1); // Наступна ставка +10%
-        
-        if (Math.floor(money) < nextBid) { 
-            alert(`Мало грошей! Потрібно ₴${nextBid}, а у вас ₴${Math.floor(money)}`); 
-            return; 
-        }
-        
+        const nextBid = Math.ceil(a.currentBid * 1.1); 
+        if (Math.floor(money) < nextBid) { alert(`Мало грошей! Треба ₴${nextBid}`); return; }
         await fetch(`${FB_URL}/auctions/${id}.json`, { method:'PATCH', body: JSON.stringify({ currentBid: nextBid, highestBidder: localStorage.getItem('playerName') }) });
-        money -= nextBid; 
-        updateUI(); saveProgress(); openAuctionHouse();
+        money -= nextBid; updateUI(); saveProgress(); openAuctionHouse();
     }
 
-    function work() { if(xp >= 8) { xp -= 8; money += config.w; updateUI(); saveProgress(); syncOnline(); } else { alert("Потрібно 8 XP для роботи!"); } }
+    function work() { if(xp >= 8) { xp -= 8; money += config.w; updateUI(); saveProgress(); syncOnline(); } }
     function keepFound() { myCoins.push(currentCoin); xp += 10; closeModal(); }
     function sellFound() { money += currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); syncOnline(); }
