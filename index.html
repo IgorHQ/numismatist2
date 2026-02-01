@@ -154,7 +154,7 @@
         currentModeId = m;
         config = {easy:{s:10,w:100,r:0.3}, medium:{s:40,w:60,r:0.15}, realism:{s:80,w:40,r:0.05}}[m];
         const s = JSON.parse(localStorage.getItem('numizmat_'+m) || '{"m":200,"x":0,"a":[]}');
-        money=s.m; xp=s.x; myCoins=s.a;
+        money=s.m; xp=s.x || 0; myCoins=s.a;
         document.getElementById('menu').style.display='none';
         document.getElementById('ui-layer').style.display='block';
         document.getElementById('current-mode-label').innerText = m === 'easy' ? 'Простий' : m === 'medium' ? 'Середній' : 'Реалізм';
@@ -216,10 +216,17 @@
                     if (a.status && a.status !== 'active') return;
                     const timeLeft = Math.max(0, AUC_TIME - (Date.now() - a.startTime));
                     const h = Math.floor(timeLeft / 3600000), m = Math.floor((timeLeft % 3600000) / 60000);
+                    
                     const isMine = a.seller === nick;
+                    const isMyBid = a.lastBidder === nick;
+                    
+                    // ЛОГИКА КНОПКИ: Если ставка моя - синяя и текст ВАША, если нет - золотая. Но обе активны.
+                    let btnStyle = isMyBid ? "background:var(--blue); color:white;" : "background:var(--gold); color:black;";
+                    let btnText = isMyBid ? "ВАША" : "СТАВКА";
+
                     const actionHtml = isMine 
                         ? `<div style="color:#888; font-size:10px; border:1px solid #444; padding:5px; border-radius:5px;">ВАШ ЛОТ</div>`
-                        : `<button class="nav-btn btn-gold" style="width:70px" onclick="makeBid('${mode}', '${id}', ${a.currentBid})">СТАВКА</button>`;
+                        : `<button class="nav-btn" style="width:70px; ${btnStyle}" onclick="makeBid('${mode}', '${id}', ${a.currentBid})">${btnText}</button>`;
 
                     list.innerHTML += `<div class="list-row">
                         <div style="flex:1">
@@ -248,7 +255,6 @@
             try {
                 await fetch(`${FB_URL}/auctions/${mode}/${lotId}.json`, { method: 'PATCH', body: JSON.stringify({ currentBid: bid, lastBidder: nick }) });
                 money -= bid; updateUI(); save(); sync(); refreshAuc(mode);
-                alert("Успішно!");
             } catch (e) { alert("Помилка"); }
         }
     }
