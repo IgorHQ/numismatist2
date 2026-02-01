@@ -151,7 +151,6 @@
         coinMesh.material[1].needsUpdate = true; coinMesh.material[2].needsUpdate = true;
     }
 
-    // --- GAME LOGIC ---
     function startGame(mode) {
         currentModeId = mode; 
         config = { easy: {s:10, w:100, r:0.3}, medium: {s:40, w:60, r:0.15}, realism: {s:80, w:40, r:0.05} }[mode];
@@ -195,7 +194,7 @@
     }
 
     function search() {
-        if (money < config.s) return;
+        if (Math.floor(money) < config.s) { alert("Мало грошей для пошуку!"); return; }
         money -= config.s;
         const n = [1, 2, 5, 10, 25, 50][Math.floor(Math.random()*6)];
         const y = 1992 + Math.floor(Math.random()*30);
@@ -256,14 +255,23 @@
         await fetch(`${FB_URL}/auctions/${Date.now()}_${name}.json`, { method:'PUT', body: JSON.stringify({ seller: name, coin: c, currentBid: Number(p), endTime: Date.now() + 172800000 }) });
         myCoins.splice(i, 1); toggleAlbum(); updateUI(); saveProgress();
     }
+    
+    // --- ВИПРАВЛЕНИЙ АУКЦІОН (ПЕРЕВІРКА ГРОШЕЙ) ---
     async function bidOnAuction(id) {
         const res = await fetch(`${FB_URL}/auctions/${id}.json`); const a = await res.json();
-        const next = Math.floor(a.currentBid * 1.1); if (money < next) return alert("Мало грошей!");
-        await fetch(`${FB_URL}/auctions/${id}.json`, { method:'PATCH', body: JSON.stringify({ currentBid: next, highestBidder: localStorage.getItem('playerName') }) });
-        money -= next; updateUI(); saveProgress(); openAuctionHouse();
+        const nextBid = Math.ceil(a.currentBid * 1.1); // Наступна ставка +10%
+        
+        if (Math.floor(money) < nextBid) { 
+            alert(`Мало грошей! Потрібно ₴${nextBid}, а у вас ₴${Math.floor(money)}`); 
+            return; 
+        }
+        
+        await fetch(`${FB_URL}/auctions/${id}.json`, { method:'PATCH', body: JSON.stringify({ currentBid: nextBid, highestBidder: localStorage.getItem('playerName') }) });
+        money -= nextBid; 
+        updateUI(); saveProgress(); openAuctionHouse();
     }
 
-    function work() { if(xp >= 8) { xp -= 8; money += config.w; updateUI(); saveProgress(); syncOnline(); } }
+    function work() { if(xp >= 8) { xp -= 8; money += config.w; updateUI(); saveProgress(); syncOnline(); } else { alert("Потрібно 8 XP для роботи!"); } }
     function keepFound() { myCoins.push(currentCoin); xp += 10; closeModal(); }
     function sellFound() { money += currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display = 'none'; updateUI(); saveProgress(); syncOnline(); }
