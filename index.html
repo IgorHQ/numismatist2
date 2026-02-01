@@ -3,35 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Нумізмат Pro Fix</title>
+    <title>Нумізмат Pro</title>
     <style>
         :root { --gold: #f1c40f; --blue: #3498db; --ios-bottom: calc(45px + env(safe-area-inset-bottom, 20px)); }
         body { margin: 0; height: 100svh; overflow: hidden; background: #000; font-family: -apple-system, system-ui, sans-serif; color: white; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        
         #container3d { position: absolute; top: 0; left: 0; width: 100%; height: 55svh; z-index: 1; }
         #ui-layer { display: none; position: absolute; inset: 0; z-index: 10; pointer-events: none; }
         #ui-layer button, #modal, #album-window, #leaderboard-window { pointer-events: auto; }
         
-        #top-bar { position: absolute; top: calc(10px + env(safe-area-inset-top, 20px)); left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .stat { background: rgba(30,30,30,0.85); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); font-size: 12px; font-weight: bold; }
+        #top-bar { position: absolute; top: calc(10px + env(safe-area-inset-top, 20px)); left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .stat-group { display: flex; flex-direction: column; gap: 4px; }
+        .stat { background: rgba(30,30,30,0.85); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); font-size: 12px; font-weight: bold; min-width: 60px; text-align: center; }
+        .income-tag { font-size: 9px; color: #2ecc71; font-weight: bold; margin-left: 5px; }
         
-        /* Кнопка скидання */
         .reset-btn { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #e74c3c; padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
 
-        #modal {
-            display: none; position: absolute; 
-            bottom: calc(90px + var(--ios-bottom));
-            left: 50%; transform: translateX(-50%);
-            background: rgba(15,15,15,0.98); 
-            padding: 10px 15px; border-radius: 15px; text-align: center; 
-            border: 1px solid var(--gold); 
-            width: 85%; max-width: 280px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 100;
-        }
-
-        #m-title { margin: 0 0 5px 0; color: var(--gold); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-        #coin-desc { margin: 5px 0; font-size: 13px; line-height: 1.2; color: #ddd; }
-        
+        #modal { display: none; position: absolute; bottom: calc(90px + var(--ios-bottom)); left: 50%; transform: translateX(-50%); background: rgba(15,15,15,0.98); padding: 10px 15px; border-radius: 15px; text-align: center; border: 1px solid var(--gold); width: 85%; max-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 100; }
         .main-nav { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; padding: 10px 15px var(--ios-bottom) 15px; background: linear-gradient(transparent, rgba(0,0,0,1) 70%); }
         .nav-btn { flex: 1; padding: 15px 5px; border-radius: 15px; border: none; font-weight: bold; font-size: 10px; line-height: 1.2; white-space: pre-line; cursor: pointer; }
         .btn-blue { background: #3498db; color: white; }
@@ -39,27 +26,22 @@
         .btn-purple { background: #9b59b6; color: white; }
 
         #menu { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .menu-btn { width: 80%; padding: 18px; margin: 8px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .menu-btn { width: 80%; padding: 18px; margin: 8px; border-radius: 15px; border: 2px solid var(--gold); background: #111; color: white; font-size: 18px; font-weight: bold; }
 
         #album-window, #leaderboard-window { display: none; position: fixed; inset: 0; background: #111; z-index: 4000; padding: calc(20px + env(safe-area-inset-top)) 20px; flex-direction: column; }
-        .tabs { display: flex; gap: 5px; margin-top: 15px; }
-        .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #444; background: #222; color: #888; font-size: 11px; }
-        .tab-btn.active { background: var(--gold); color: black; }
         .list-container { flex: 1; overflow-y: auto; margin-top: 15px; }
         .list-row { background: #1a1a1a; margin-bottom: 8px; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; border: 1px solid #333; align-items: center;}
         
-        .loader { width: 30px; height: 30px; border: 4px solid #333; border-top: 4px solid var(--gold); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         button:active { transform: scale(0.92); opacity: 0.8; }
     </style>
 </head>
 <body>
 
 <div id="menu">
-    <h1 style="color:var(--gold); letter-spacing: 2px; margin-bottom: 20px;">НУМІЗМАТ</h1>
+    <h1 style="color:var(--gold); letter-spacing: 2px; margin-bottom: 10px;">НУМІЗМАТ</h1>
     <div id="player-box" style="text-align: center; margin-bottom: 20px;">
         <p id="player-display" style="font-size: 13px; color: #aaa;"></p>
-        <button onclick="changeNickname()" style="color:var(--blue); background:none; border:none; text-decoration:underline; font-size: 11px;">Вийти з акаунта</button>
+        <button onclick="changeNickname()" style="color:var(--blue); background:none; border:none; text-decoration:underline; font-size: 11px;">Вийти</button>
     </div>
     <button class="menu-btn" onclick="startGame('easy')">Простий</button>
     <button class="menu-btn" onclick="startGame('medium')">Середній</button>
@@ -67,39 +49,24 @@
     <button class="menu-btn" style="border-color:#3498db; margin-top: 15px;" onclick="openLeaderboard()">🏆 РЕЙТИНГ</button>
 </div>
 
-<div id="leaderboard-window">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h2 style="margin:0">🏆 ТОП-10</h2>
-        <button onclick="closeLeaderboard()" style="color:red; background:none; border:none; font-size:40px;">&times;</button>
-    </div>
-    <div class="tabs">
-        <button id="tab-easy" class="tab-btn" onclick="loadLeaderboard('easy')">Простий</button>
-        <button id="tab-medium" class="tab-btn" onclick="loadLeaderboard('medium')">Середній</button>
-        <button id="tab-realism" class="tab-btn" onclick="loadLeaderboard('realism')">Реалізм</button>
-    </div>
-    <div id="leaderboard-list" class="list-container"></div>
-</div>
-
-<div id="container3d"></div>
-
 <div id="ui-layer">
     <div id="top-bar">
-        <div style="display:flex; gap:8px;">
-            <div class="stat">₴ <span id="money-val">0</span></div>
+        <div class="stat-group">
+            <div class="stat">₴ <span id="money-val">0</span><span id="rate-display" class="income-tag"></span></div>
             <div class="stat">XP <span id="xp-val" style="color:var(--blue)">0</span></div>
         </div>
         <div style="display:flex; gap:5px;">
-            <button class="reset-btn" onclick="resetThisMode()">Почати заново</button>
+            <button class="reset-btn" onclick="resetThisMode()">Заново</button>
             <button class="stat" style="background:#333; border:none; color:white;" onclick="location.reload()">Меню</button>
         </div>
     </div>
 
     <div id="modal">
-        <h3 id="m-title"></h3>
-        <div id="coin-desc"></div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-            <button class="nav-btn btn-blue" style="padding:12px 0;" onclick="keepFound()">В Альбом</button>
-            <button class="nav-btn" style="padding:12px 0; background:#444; color:white;" onclick="sellFound()">Продати</button>
+        <h3 id="m-title" style="margin:0; color:var(--gold)"></h3>
+        <div id="coin-desc" style="margin:8px 0; font-size:13px;"></div>
+        <div style="display:flex; gap:8px;">
+            <button class="nav-btn btn-blue" onclick="keepFound()">В Альбом</button>
+            <button class="nav-btn" style="background:#444; color:white;" onclick="sellFound()">Продати</button>
         </div>
     </div>
 
@@ -118,18 +85,28 @@
     </nav>
 </div>
 
+<div id="leaderboard-window">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0">🏆 ТОП-10</h2>
+        <button onclick="closeLeaderboard()" style="color:red; background:none; border:none; font-size:40px;">&times;</button>
+    </div>
+    <div id="leaderboard-list" class="list-container"></div>
+</div>
+
+<div id="container3d"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
     const FB_URL = "https://numismatis-c1cce-default-rtdb.europe-west1.firebasedatabase.app/";
     let money = 0, xp = 0, myCoins = [], currentCoin = null, config = {}, currentModeId = '';
     
     const COIN_DB = {
-        1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }, { y: 1996, price: 1000, desc: "З наборів", xp: 300 }] },
-        2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }, { y: 2003, price: 4500, desc: "Рідкісний рік", xp: 700 }] },
-        5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }, { y: 1992, price: 5000, desc: "Крупна насічка", xp: 900 }] },
+        1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }] },
+        2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }] },
+        5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }] },
         10: { common: 10, rarities: [{ y: 1992, price: 15000, desc: "Шість ягід", xp: 1500 }] },
-        25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }, { y: 1992, price: 3500, desc: "Англійський чекан", xp: 800 }] },
-        50: { common: 50, rarities: [{ y: 1996, price: 1500, desc: "Рідкісний рік", xp: 400 }, { y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
+        25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }] },
+        50: { common: 50, rarities: [{ y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
     };
 
     const modes = { 
@@ -138,7 +115,7 @@
         realism: { search: 80, work: 40, rareChance: 0.05, garbageMin: 1, startMoney: 1000 } 
     };
 
-    // --- 3D СЦЕНА ---
+    // --- 3D ENGINE ---
     const container = document.getElementById('container3d');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, container.clientWidth/container.clientHeight, 0.1, 1000);
@@ -176,14 +153,46 @@
         coinMesh.material[1].needsUpdate = true; coinMesh.material[2].needsUpdate = true;
     }
 
-    // --- ЛОГІКА ІГРИ ---
+    // --- GAME LOGIC ---
     function startGame(mode) {
         closeLeaderboard(); currentModeId = mode; config = modes[mode];
         const saved = localStorage.getItem('numizmat_' + mode);
-        if (saved) { const d = JSON.parse(saved); money = d.m; xp = d.x; myCoins = d.a || []; } 
-        else { money = config.startMoney; xp = 0; myCoins = []; }
-        document.getElementById('menu').style.display = 'none'; document.getElementById('ui-layer').style.display = 'block';
-        update3D("НУМІЗМАТ", 2026, false, 0); updateUI(); syncOnline();
+        if (saved) {
+            const d = JSON.parse(saved);
+            money = d.m; xp = d.x; myCoins = d.a || [];
+            
+            // Offline Income (max 12h)
+            if (d.lastTime) {
+                let mins = Math.floor((Date.now() - d.lastTime) / 60000);
+                if (mins > 720) mins = 720; 
+                if (mins > 0) {
+                    let rate = 0;
+                    myCoins.forEach(c => { if(c.rare) rate += c.price * 0.0001; });
+                    const offIncome = rate * mins;
+                    if (offIncome > 0) {
+                        money += offIncome;
+                        alert(`Виставка принесла ₴${offIncome.toFixed(2)} за ${mins} хв.`);
+                    }
+                }
+            }
+        } else { money = config.startMoney; xp = 0; myCoins = []; }
+        
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('ui-layer').style.display = 'block';
+        update3D("НУМІЗМАТ", 2024, false, 0);
+        updateUI(); syncOnline();
+        
+        // Start passive income ticker
+        setInterval(() => {
+            let income = 0;
+            myCoins.forEach(c => { if(c.rare) income += c.price * 0.0001; });
+            if (income > 0) {
+                money += income;
+                console.log(`+₴${income.toFixed(4)} (Passive)`);
+                updateUI();
+                saveProgress();
+            }
+        }, 60000);
     }
 
     function search() {
@@ -194,30 +203,48 @@
         const y = 1992 + Math.floor(Math.random() * 30); 
         let price = 0, statusText = "", isR = false, xpGain = 5, rot = 0, isI = false;
         const rareMatch = COIN_DB[n].rarities.find(r => r.y === y);
-        if (rareMatch && Math.random() < 0.2) { isR = true; statusText = rareMatch.desc; price = rareMatch.price; xpGain = rareMatch.xp; } 
-        else if (Math.random() < config.rareChance) {
-            isR = true; if (Math.random() < 0.1) { statusText = "Інкуз"; price = 4500; isI = true; xpGain = 600; } 
+
+        if (rareMatch && Math.random() < 0.2) { 
+            isR = true; statusText = rareMatch.desc; price = rareMatch.price; xpGain = rareMatch.xp; 
+        } else if (Math.random() < config.rareChance) {
+            isR = true; 
+            if (Math.random() < 0.1) { statusText = "Інкуз"; price = 4500; isI = true; xpGain = 600; } 
             else { rot = [90, 180, 270][Math.floor(Math.random() * 3)]; statusText = `Поворот ${rot}°`; price = 300 + Math.floor(Math.random() * 200); xpGain = 60; }
-        } else { statusText = "Гарний стан"; price = COIN_DB[n].common + config.garbageMin + Math.floor(Math.random() * 5); }
+        } else { 
+            statusText = "Гарний стан"; price = COIN_DB[n].common + config.garbageMin + Math.floor(Math.random() * 5); 
+        }
+
         currentCoin = { n, y, e: statusText, price, rare: isR, rot, inc: isI, xp: xpGain };
         update3D(n, y, isI, rot);
         document.getElementById('m-title').innerText = isR ? "⭐ РАРИТЕТ ⭐" : "Знайдено монету";
-        document.getElementById('coin-desc').innerHTML = `<b>${n} коп. ${y}</b> — ₴${price}<br><span style="color:var(--gold)">${statusText}</span>`;
+        document.getElementById('coin-desc').innerHTML = `<b>${n}к ${y}</b> — ₴${price}<br><small>${statusText}</small>`;
         document.getElementById('modal').style.display = 'block';
         updateUI(); saveProgress(); syncOnline();
     }
 
-    // СКИНУТИ ПРОГРЕС РЕЖИМУ
-    async function resetThisMode() {
-        if (confirm("Почати заново в цьому режимі? Весь прогрес та альбом буде видалено!")) {
-            const n = localStorage.getItem('playerName');
-            if(n && currentModeId) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n}.json`, { method:'DELETE' });
-            localStorage.removeItem('numizmat_' + currentModeId);
-            location.reload();
-        }
+    function updateUI() {
+        document.getElementById('money-val').innerText = Math.floor(money);
+        document.getElementById('xp-val').innerText = xp;
+        
+        let rate = 0;
+        myCoins.forEach(c => { if(c.rare) rate += c.price * 0.0001; });
+        document.getElementById('rate-display').innerText = rate > 0 ? `+₴${rate.toFixed(2)}/хв` : "";
+
+        document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`;
+        document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`;
+        document.getElementById('work-btn').disabled = xp < 8;
+        document.getElementById('search-btn').disabled = money < config.search;
     }
 
-    // Решта системних функцій
+    function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins, lastTime: Date.now() })); }
+
+    async function syncOnline() {
+        const name = localStorage.getItem('playerName'); if (!name || !currentModeId) return;
+        const data = { name, money, xp, pin: localStorage.getItem('playerPin'), album: myCoins, lastUpdate: Date.now() };
+        try { await fetch(`${FB_URL}/leaderboard/${currentModeId}/${name}.json`, { method: 'PATCH', body: JSON.stringify(data) }); } catch (e) {}
+    }
+
+    // Utilities
     function work() { if(xp >= 8) { xp -= 8; money += config.work; updateUI(); saveProgress(); syncOnline(); } }
     function keepFound() { myCoins.push(currentCoin); xp += (currentCoin.xp || 5); closeModal(); }
     function sellFound() { money += currentCoin.price; closeModal(); }
@@ -233,15 +260,8 @@
         });
     }
     function sellFromAlbum(i, e) { e.stopPropagation(); money += myCoins[i].price; myCoins.splice(i, 1); updateUI(); renderAlbum(); saveProgress(); syncOnline(); }
-    function updateUI() { document.getElementById('money-val').innerText = money; document.getElementById('xp-val').innerText = xp; document.getElementById('work-btn').innerText = `Працювати\n-8XP / +${config.work}₴`; document.getElementById('search-btn').innerText = `Шукати\n-${config.search}₴`; document.getElementById('work-btn').disabled = xp < 8; document.getElementById('search-btn').disabled = money < config.search; }
-    function saveProgress() { localStorage.setItem('numizmat_' + currentModeId, JSON.stringify({ m: money, x: xp, a: myCoins })); }
+    async function resetThisMode() { if (confirm("Почати заново?")) { const n = localStorage.getItem('playerName'); if(n) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n}.json`, { method:'DELETE' }); localStorage.removeItem('numizmat_' + currentModeId); location.reload(); } }
     
-    async function syncOnline() {
-        const name = localStorage.getItem('playerName'); if (!name || !currentModeId) return;
-        const data = { name, money, xp, pin: localStorage.getItem('playerPin'), album: myCoins, lastUpdate: Date.now() };
-        try { await fetch(`${FB_URL}/leaderboard/${currentModeId}/${name}.json`, { method: 'PATCH', body: JSON.stringify(data) }); } catch (e) {}
-    }
-
     async function checkLogin() {
         let name = localStorage.getItem('playerName');
         if (!name) {
@@ -262,26 +282,25 @@
         document.getElementById('player-display').innerText = "Гравець: " + name;
         update3D("НУМІЗМАТ", 2024, false, 0);
     }
+
     function changeNickname() { localStorage.clear(); location.reload(); }
     function openLeaderboard() { document.getElementById('leaderboard-window').style.display = 'flex'; loadLeaderboard(currentModeId || 'easy'); }
     function closeLeaderboard() { document.getElementById('leaderboard-window').style.display = 'none'; }
     async function loadLeaderboard(mode) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        const tab = document.getElementById('tab-' + mode); if(tab) tab.classList.add('active');
-        const list = document.getElementById('leaderboard-list'); list.innerHTML = `<div class="loader"></div>`;
+        const list = document.getElementById('leaderboard-list'); list.innerHTML = "Завантаження...";
         try {
-            const res = await fetch(`${FB_URL}/leaderboard/${mode}.json?orderBy="money"&limitToLast=10&t=${Date.now()}`);
+            const res = await fetch(`${FB_URL}/leaderboard/${mode}.json?orderBy="money"&limitToLast=10`);
             const data = await res.json(); list.innerHTML = "";
-            if (!data) { list.innerHTML = "Порожньо"; return; }
-            const sorted = Object.values(data).filter(u => u && u.money !== undefined).sort((a,b) => b.money - a.money);
-            sorted.forEach((u, i) => {
-                const isMe = u.name === localStorage.getItem('playerName') ? "border:1px solid var(--gold); background:rgba(255,215,0,0.1);" : "";
-                list.innerHTML += `<div class="list-row" style="${isMe}"><span><b>${i+1}.</b> ${u.name}</span><b>₴${u.money}</b></div>`;
+            if (!data) return;
+            Object.values(data).sort((a,b) => b.money - a.money).forEach((u, i) => {
+                list.innerHTML += `<div class="list-row"><span>${i+1}. ${u.name}</span><b>₴${Math.floor(u.money)}</b></div>`;
             });
-        } catch (e) { list.innerHTML = "Помилка"; }
+        } catch(e) { list.innerHTML = "Помилка мережі"; }
     }
+
     function animate() { requestAnimationFrame(animate); pivot.rotation.y += 0.015; renderer.render(scene, camera); }
-    animate(); window.onload = checkLogin;
+    animate();
+    window.onload = checkLogin;
 </script>
 </body>
 </html>
