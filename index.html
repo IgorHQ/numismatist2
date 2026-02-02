@@ -154,7 +154,9 @@
         currentModeId = m;
         config = {easy:{s:10,w:100,r:0.3}, medium:{s:40,w:60,r:0.15}, realism:{s:80,w:40,r:0.05}}[m];
         const s = JSON.parse(localStorage.getItem('numizmat_'+m) || '{"m":200,"x":0,"a":[]}');
-        money=s.m; xp=s.x || 0; myCoins=s.a;
+        money=s.m; 
+        xp=s.x || 0; // Fix XP undefined
+        myCoins=s.a;
         document.getElementById('menu').style.display='none';
         document.getElementById('ui-layer').style.display='block';
         document.getElementById('current-mode-label').innerText = m === 'easy' ? 'Простий' : m === 'medium' ? 'Середній' : 'Реалізм';
@@ -164,11 +166,11 @@
     }
 
     function updateUI() {
-        document.getElementById('money-val').innerText = Math.floor(money);
-        document.getElementById('xp-val').innerText = xp;
+        document.getElementById('money-val').innerText = Math.floor(money || 0);
+        document.getElementById('xp-val').innerText = xp || 0; // Fix XP undefined
         
         let totalP = 0;
-        myCoins.forEach(c => { if(c.rare) totalP += c.price * 0.001; });
+        myCoins.forEach(c => { if(c && c.rare) totalP += c.price * 0.001; });
         const passDisp = document.getElementById('passive-in-balance');
         passDisp.innerText = `(+₴${totalP.toFixed(1)})`;
         passDisp.style.display = totalP > 0 ? "inline" : "none";
@@ -179,7 +181,7 @@
 
     function passiveIncome() {
         let inc = 0;
-        myCoins.forEach(c => { if(c.rare) inc += c.price * 0.001; });
+        myCoins.forEach(c => { if(c && c.rare) inc += c.price * 0.001; });
         if(inc > 0) {
             money += inc; updateUI(); save();
             const notice = document.getElementById('passive-notice');
@@ -213,14 +215,15 @@
             if (data) {
                 Object.keys(data).forEach(id => {
                     const a = data[id];
-                    if (a.status && a.status !== 'active') return;
+                    if (!a || (a.status && a.status !== 'active')) return;
+                    if (!a.seller) return; // Пропуск поламаних записів
+
                     const timeLeft = Math.max(0, AUC_TIME - (Date.now() - a.startTime));
                     const h = Math.floor(timeLeft / 3600000), m = Math.floor((timeLeft % 3600000) / 60000);
                     
                     const isMine = a.seller === nick;
                     const isMyBid = a.lastBidder === nick;
                     
-                    // ЛОГИКА КНОПКИ: Если ставка моя - синяя и текст ВАША, если нет - золотая. Но обе активны.
                     let btnStyle = isMyBid ? "background:var(--blue); color:white;" : "background:var(--gold); color:black;";
                     let btnText = isMyBid ? "ВАША" : "СТАВКА";
 
@@ -236,7 +239,7 @@
                         </div>
                         <div style="text-align:right; min-width:90px;">
                             <b style="color:var(--gold); font-size:14px;">₴${a.currentBid}</b><br>
-                            <small style="color:#666">Старт: ₴${a.startPrice || a.coin.price}</small><br>
+                            <small style="color:#666">Оцінка: ₴${a.coin.price}</small><br>
                             ${actionHtml}
                         </div>
                     </div>`;
@@ -272,8 +275,9 @@
             const d = await res.json();
             list.innerHTML = "";
             if(d) {
-                Object.values(d).sort((a,b) => b.money - a.money).slice(0, 15).forEach((u, i) => {
-                    list.innerHTML += `<div class="list-row"><span>${i+1}. <b>${u.name}</b></span><b style="color:var(--gold)">₴${Math.floor(u.money)}</b></div>`;
+                // Фільтр від undefined
+                Object.values(d).filter(u => u && u.name).sort((a,b) => (b.money || 0) - (a.money || 0)).slice(0, 15).forEach((u, i) => {
+                    list.innerHTML += `<div class="list-row"><span>${i+1}. <b>${u.name}</b></span><b style="color:var(--gold)">₴${Math.floor(u.money || 0)}</b></div>`;
                 });
             } else { list.innerHTML = "Пусто"; }
         } catch(e) { list.innerHTML = "Помилка"; }
@@ -282,32 +286,56 @@
     // --- АЛЬБОМ ТА ПРОДАЖ ---
     function toggleAlbum() {
         const win = document.getElementById('album-win');
-        win.style.display = win.style.display == 'flex' ? 'none' : 'flex';
-        if(win.style.display == 'flex') {
-            const list = document.getElementById('album-list');
-            list.innerHTML = '';
-            myCoins.forEach((c, i) => {
-                list.innerHTML += `<div class="list-row" onclick="update3D(${c.n},${c.y},${c.inc},${c.rot})">
-                    <div style="flex:1"><b>${c.n}к ${c.y}</b><br><small>${c.e}</small><br><b style="color:var(--gold)">₴${c.price}</b></div>
-                    <div style="display:flex; flex-direction:column; gap:5px;">
-                        <button class="nav-btn btn-blue" style="padding:5px;" onclick="sellFromAlbum(${i})">ПРОДАТИ</button>
-                        ${c.rare ? `<button class="nav-btn btn-orange" style="padding:5px;" onclick="prepareAuction(${i})">АУКЦІОН</button>` : ''}
-                    </div>
-                </div>`;
-            });
+        if (win.style.display === 'flex') {
+            win.style.display = 'none';
+        } else {
+            win.style.display = 'flex';
+            renderAlbumList();
         }
+    }
+
+    function renderAlbumList() {
+        const list = document.getElementById('album-list');
+        list.innerHTML = '';
+        if (myCoins.length === 0) {
+            list.innerHTML = "<center style='margin-top:20px; color:#666;'>Альбом порожній</center>";
+            return;
+        }
+        myCoins.forEach((c, i) => {
+            if(!c) return;
+            list.innerHTML += `<div class="list-row" onclick="update3D(${c.n},${c.y},${c.inc},${c.rot})">
+                <div style="flex:1"><b>${c.n}к ${c.y}</b><br><small>${c.e}</small><br><b style="color:var(--gold)">₴${c.price}</b></div>
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                    <button class="nav-btn btn-blue" style="padding:5px;" onclick="event.stopPropagation(); sellFromAlbum(${i})">ПРОДАТИ</button>
+                    ${c.rare ? `<button class="nav-btn btn-orange" style="padding:5px;" onclick="event.stopPropagation(); prepareAuction(${i})">АУКЦІОН</button>` : ''}
+                </div>
+            </div>`;
+        });
+    }
+
+    function sellFromAlbum(i) {
+        money += myCoins[i].price;
+        myCoins.splice(i, 1);
+        updateUI();
+        save();
+        sync();
+        renderAlbumList(); // Оновлюємо список без закриття вікна
     }
 
     async function prepareAuction(i) {
         const c = myCoins[i];
-        const userPrice = prompt(`Ваша ціна за ${c.n}к ${c.y}?`, c.price);
+        const userPrice = prompt(`Ваша ціна за ${c.n}к ${c.y}? (Оцінка: ₴${c.price})`, c.price);
         if (userPrice && !isNaN(userPrice) && userPrice > 0) {
             const nick = localStorage.getItem('playerName');
             const lotId = `${Date.now()}_${nick.replace(/[^a-z0-9]/gi,'')}`;
             const lotData = { seller: nick, coin: c, startPrice: parseInt(userPrice), currentBid: parseInt(userPrice), startTime: Date.now(), status: 'active', mode: currentModeId };
             try {
                 await fetch(`${FB_URL}/auctions/${currentModeId}/${lotId}.json`, { method:'PUT', body: JSON.stringify(lotData) });
-                myCoins.splice(i, 1); toggleAlbum(); save(); sync(); alert("Виставлено!");
+                myCoins.splice(i, 1);
+                save(); 
+                sync(); 
+                renderAlbumList();
+                alert("Виставлено!");
             } catch(e) { alert("Помилка"); }
         }
     }
@@ -327,7 +355,6 @@
     function keepFound() { myCoins.push(currentCoin); xp+=10; closeModal(); }
     function sellFound() { money+=currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display='none'; updateUI(); save(); sync(); }
-    function sellFromAlbum(i) { money+=myCoins[i].price; myCoins.splice(i,1); toggleAlbum(); updateUI(); save(); }
     function closeRank() { document.getElementById('rank-win').style.display='none'; }
     function closeAuc() { document.getElementById('auc-win').style.display='none'; }
     function save() { if(currentModeId) localStorage.setItem('numizmat_'+currentModeId, JSON.stringify({m:money, x:xp, a:myCoins})); }
@@ -341,7 +368,7 @@
             const data = await res.json(); if(!data) return;
             for(let id in data) {
                 const a = data[id];
-                if(a.status === 'active' && (Date.now() - a.startTime) > AUC_TIME) {
+                if(a && a.status === 'active' && (Date.now() - a.startTime) > AUC_TIME) {
                     if(a.seller === nick) {
                         if(a.lastBidder) money += a.currentBid; else myCoins.push(a.coin);
                         await fetch(`${FB_URL}/auctions/${currentModeId}/${id}.json`, { method:'PATCH', body: JSON.stringify({status:'settled'}) });
