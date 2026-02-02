@@ -301,6 +301,11 @@ async function refreshAuc(mode, isSilent = false) {
                 // ------------------------------
 
                 const timeLeft = Math.max(0, AUC_TIME - (Date.now() - a.startTime));
+                // Якщо час вийшов — спрацьовує логіка завершення
+                if (timeLeft <= 0) {
+                 handleAuctionEnd(mode, id, a);
+                return; // Не малюємо цей лот у списку
+                }
                 const h = Math.floor(timeLeft / 3600000), m = Math.floor((timeLeft % 3600000) / 60000), s = Math.floor((timeLeft % 60000) / 1000);
                 
                 const isMine = a.seller === nick;
@@ -367,6 +372,37 @@ async function makeBid(mode, lotId, current) {
     } catch (e) { alert("Помилка"); }
 }
 
+async function handleAuctionEnd(mode, lotId, lot) {
+    const nick = localStorage.getItem('playerName');
+    
+    // 1. Спочатку видаляємо лот з бази, щоб ніхто інший не встиг його обробити
+    await fetch(`${FB_URL}/auctions/${mode}/${lotId}.json`, { method: 'DELETE' });
+
+    // 2. Логіка для ПОКУПЦЯ (якщо останній бідер — ти)
+    if (lot.lastBidder === nick) {
+        myCoins.push(lot.coin);
+        localStorage.removeItem(`bid_locked_${lotId}`); // Знімаємо замок з грошей
+        alert(`🎉 Вітаємо! Ви виграли ${lot.coin.n}к ${lot.coin.y} за ₴${lot.currentBid}`);
+    } 
+    
+    // 3. Логіка для ПРОДАВЦЯ (якщо ти виставив цей лот)
+    else if (lot.seller === nick) {
+        if (lot.lastBidder) {
+            // Лот купили: нараховуємо гроші
+            money += lot.currentBid;
+            alert(`💰 Ваш лот ${lot.coin.n}к продано за ₴${lot.currentBid}!`);
+        } else {
+            // Лот ніхто не купив: повертаємо монету назад в альбом
+            myCoins.push(lot.coin);
+            alert(`↩️ Лот не продано. Монету повернено в альбом.`);
+        }
+    }
+
+    save();
+    updateUI();
+    sync();
+    refreshAuc(mode); // Оновлюємо вікно аукціону
+}
     // --- РЕЙТИНГ ---
     function openRank() { document.getElementById('rank-win').style.display = 'flex'; loadRank(currentModeId || 'easy'); }
     async function loadRank(m) {
@@ -598,7 +634,7 @@ function search() {
 
     // ВІДОБРАЖЕННЯ У ВІКНІ (Твій стиль)
     document.getElementById('modal').style.display = 'block';
-    document.getElementById('m-title').innerText = isR ? "💎 РІДКІСНА ЗНАХІДКА" : "Знайдено монету";
+    document.getElementById('m-title').innerText = isR ? "💎 Рідкісна знахідка!" : "Знайдено монету";
     
     // Формуємо вміст: Номінал + Рік, Тип монети, Довідка, Ціна
     document.getElementById('coin-desc').innerHTML = `
