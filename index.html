@@ -116,6 +116,14 @@
     const FB_URL = "https://numismatis-c1cce-default-rtdb.europe-west1.firebasedatabase.app/";
     let money = 0, xp = 0, myCoins = [], currentCoin = null, config = {}, currentModeId = '';
     const AUC_TIME = 24 * 60 * 60 * 1000;
+    const COIN_DB = {
+    1: { common: 1, rarities: [{ y: 1994, price: 2500, desc: "Рідкісний рік", xp: 500 }, { y: 1996, price: 1000, desc: "З наборів", xp: 300 }] },
+    2: { common: 2, rarities: [{ y: 1992, price: 25000, desc: "Вузький вінок", xp: 2000 }, { y: 2003, price: 4500, desc: "Рідкісний рік", xp: 700 }] },
+    5: { common: 5, rarities: [{ y: 1994, price: 3500, desc: "Рідкісний рік", xp: 600 }, { y: 1992, price: 5000, desc: "Крупна насічка", xp: 900 }] },
+    10: { common: 10, rarities: [{ y: 1992, price: 15000, desc: "Шість ягід", xp: 1500 }] },
+    25: { common: 25, rarities: [{ y: 1995, price: 2000, desc: "Рідкісний рік", xp: 500 }, { y: 1992, price: 3500, desc: "Англійський чекан", xp: 800 }] },
+    50: { common: 50, rarities: [{ y: 1996, price: 1500, desc: "Рідкісний рік", xp: 400 }, { y: 1992, price: 6000, desc: "Трапеції", xp: 1000 }] }
+};
     let aucListener = null;
 
     // --- 3D ENGINE ---
@@ -393,17 +401,65 @@ async function makeBid(mode, lotId, current) {
 
     // --- СЕРВІСНІ ФУНКЦІЇ ---
     function search() {
-        if(money < config.s) return; money -= config.s;
-        const noms = [1,2,5,10,25,50], n = noms[Math.floor(Math.random()*noms.length)], y = 1992 + Math.floor(Math.random()*28);
-        let isR=false, p=n+5, e="Обігова", rt=0, ic=false;
-        if(Math.random()<config.r) { isR=true; if(Math.random()>0.8){ ic=true; p=5000; e="Інкуз"; } else { rt=[90,180,270][Math.floor(Math.random()*3)]; p=rt==180?1500:600; e=`Поворот ${rt}°`; } }
-        currentCoin = {n,y,e,price:p,rare:isR,rot:rt,inc:ic};
-        update3D(n,y,ic,rt); document.getElementById('modal').style.display='block';
-        document.getElementById('coin-desc').innerHTML = `${n} коп. ${y}<br>₴${p}<br><small>${e}</small>`;
+    if(money < config.s) return; 
+    money -= config.s;
+
+    const noms = [1, 2, 5, 10, 25, 50];
+    const n = noms[Math.floor(Math.random() * noms.length)];
+    const y = 1992 + Math.floor(Math.random() * 28);
+    
+    // Базові параметри для звичайної монети
+    let isR = false, p = n + 5, e = "Обігова", rt = 0, ic = false, bonusXp = 5;
+
+    // 1. ПЕРЕВІРКА ПО КАТАЛОГУ COIN_DB
+    if (COIN_DB[n]) {
+        const foundRare = COIN_DB[n].rarities.find(r => r.y === y);
+        if (foundRare) {
+            isR = true;
+            p = foundRare.price;
+            e = foundRare.desc;
+            bonusXp = foundRare.xp;
+        }
     }
 
+    // 2. ПЕРЕВІРКА НА ШЛЮБ (навіть якщо монета вже рідкісна за каталогом)
+    // Шанс 5% на те, що монета має виробничий брак
+    if (Math.random() < 0.05) { 
+        isR = true;
+        if (Math.random() > 0.8) {
+            // Інкузний шлюб ("Заліпуха")
+            ic = true; 
+            p += 5000; // Додаємо до ціни каталогу або базової ціни
+            e = (e === "Обігова") ? "Брак: Інкуз" : e + " (Інкуз)";
+            bonusXp += 1000;
+        } else {
+            // Поворот штемпеля
+            rt = [90, 180, 270][Math.floor(Math.random() * 3)];
+            let rotatePrice = (rt == 180 ? 1500 : 600);
+            p += rotatePrice;
+            e = (e === "Обігова") ? `Поворот ${rt}°` : e + ` (+Поворот ${rt}°)`;
+            bonusXp += 300;
+        }
+    }
+
+    currentCoin = { n, y, e, price: p, rare: isR, rot: rt, inc: ic, xp: bonusXp };
+    
+    update3D(n, y, ic, rt);
+    document.getElementById('modal').style.display = 'block';
+    document.getElementById('coin-desc').innerHTML = `
+        <b style="font-size:18px;">${n} коп. ${y}</b><br>
+        <span style="color:${isR ? 'var(--gold)' : '#aaa'}">${e}</span><br>
+        <b>Оцінка: ₴${p}</b>
+    `;
+    updateUI();
+}
+
     function work() { if(xp>=8){ xp-=8; money+=config.w; updateUI(); save(); sync(); } }
-    function keepFound() { myCoins.push(currentCoin); xp+=10; closeModal(); }
+    function keepFound() { 
+    myCoins.push(currentCoin); 
+    xp += currentCoin.xp || 10; // Додаємо XP залежно від рідкості монети
+    closeModal(); 
+}
     function sellFound() { money+=currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display='none'; updateUI(); save(); sync(); }
     function closeRank() { document.getElementById('rank-win').style.display='none'; }
