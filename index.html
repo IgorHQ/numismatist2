@@ -116,6 +116,7 @@
     const FB_URL = "https://numismatis-c1cce-default-rtdb.europe-west1.firebasedatabase.app/";
     let money = 0, xp = 0, myCoins = [], currentCoin = null, config = {}, currentModeId = '';
     const AUC_TIME = 24 * 60 * 60 * 1000;
+    let aucListener = null;
 
     // --- 3D ENGINE ---
     const scene = new THREE.Scene();
@@ -177,6 +178,7 @@
 
         document.getElementById('work-btn').innerText = `Робота\n+₴${config.w}`;
         document.getElementById('search-btn').innerText = `Пошук\n-₴${config.s}`;
+        sync();
     }
 
     function passiveIncome() {
@@ -192,75 +194,124 @@
     }
 
     // --- АУКЦІОН ---
-    function openAuction() {
-        if (!currentModeId) startGame('easy');
-        document.getElementById('auc-win').style.display = 'flex';
-        refreshAuc(currentModeId);
-    }
+    async function openAuction() {
+    if (!currentModeId) startGame('easy');
+    document.getElementById('auc-win').style.display = 'flex';
+    
+    // Запускаємо "живе" оновлення кожні 3 секунди
+    if (aucListener) clearInterval(aucListener);
+    refreshAuc(currentModeId); // Перший запуск
+    aucListener = setInterval(() => refreshAuc(currentModeId, true), 3000); 
+}
 
-    async function refreshAuc(mode) {
-        if (currentModeId !== mode) { save(); startGame(mode); }
-        const list = document.getElementById('auc-list');
-        list.innerHTML = "Оновлення...";
-        document.querySelectorAll('#auc-win .tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-auc-' + mode).classList.add('active');
+async function refreshAuc(mode, isSilent = false) {
+    if (currentModeId !== mode && !isSilent) { save(); startGame(mode); }
+    const list = document.getElementById('auc-list');
+    if (!isSilent) list.innerHTML = "Оновлення...";
+    
+    document.querySelectorAll('#auc-win .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-auc-' + mode).classList.add('active');
 
-        try {
-            const res = await fetch(`${FB_URL}/auctions/${mode}.json`);
-            const data = await res.json();
-            list.innerHTML = "";
-            let found = false;
-            const nick = localStorage.getItem('playerName');
+    try {
+        const res = await fetch(`${FB_URL}/auctions/${mode}.json`);
+        const data = await res.json();
+        const nick = localStorage.getItem('playerName');
+        let html = "";
+        let found = false;
 
-            if (data) {
-                Object.keys(data).forEach(id => {
-                    const a = data[id];
-                    if (!a || (a.status && a.status !== 'active')) return;
-                    if (!a.seller) return; // Пропуск поламаних записів
+        if (data) {
+            Object.keys(data).forEach(id => {
+                const a = data[id];
+                if (!a || a.status === 'settled') return;
 
-                    const timeLeft = Math.max(0, AUC_TIME - (Date.now() - a.startTime));
-                    const h = Math.floor(timeLeft / 3600000), m = Math.floor((timeLeft % 3600000) / 60000);
-                    
-                    const isMine = a.seller === nick;
-                    const isMyBid = a.lastBidder === nick;
-                    
-                    let btnStyle = isMyBid ? "background:var(--blue); color:white;" : "background:var(--gold); color:black;";
-                    let btnText = isMyBid ? "ВАША" : "СТАВКА";
+                // --- БЛОК ПОВЕРНЕННЯ ГРОШЕЙ ---
+                const storageKey = `bid_locked_${id}`;
+                const lockedAmount = parseFloat(localStorage.getItem(storageKey) || 0);
+                if (lockedAmount > 0 && a.lastBidder !== nick) {
+                money += lockedAmount;
+                localStorage.removeItem(storageKey);
+                 alert(`Вашу ставку на ${a.coin.n}к перебито! ₴${lockedAmount} повернено.`);
+                updateUI();
+                save();
+                sync(); // (щоб рейтинг оновився після повернення грошей)
+}
+                
+                // Якщо у нас є "заблоковані" гроші, але останній бідер вже НЕ ми
+                if (lockedAmount > 0 && a.lastBidder !== nick) {
+                    money += lockedAmount;
+                    localStorage.removeItem(storageKey); // Видаляємо запис про блок
+                    alert(`Вашу ставку на ${a.coin.n}к перебито! ₴${lockedAmount} повернено.`);
+                    updateUI();
+                    save();
+                }
+                // ------------------------------
 
-                    const actionHtml = isMine 
-                        ? `<div style="color:#888; font-size:10px; border:1px solid #444; padding:5px; border-radius:5px;">ВАШ ЛОТ</div>`
-                        : `<button class="nav-btn" style="width:70px; ${btnStyle}" onclick="makeBid('${mode}', '${id}', ${a.currentBid})">${btnText}</button>`;
+                const timeLeft = Math.max(0, AUC_TIME - (Date.now() - a.startTime));
+                const h = Math.floor(timeLeft / 3600000), m = Math.floor((timeLeft % 3600000) / 60000), s = Math.floor((timeLeft % 60000) / 1000);
+                
+                const isMine = a.seller === nick;
+                const isMyBid = a.lastBidder === nick;
+                let btnStyle = isMyBid ? "background:#2ecc71; color:white;" : "background:var(--gold); color:black;";
 
-                    list.innerHTML += `<div class="list-row">
-                        <div style="flex:1">
-                            <b>${a.coin.n}к ${a.coin.y}</b> <small style="color:var(--gold)">[${a.coin.e}]</small><br>
-                            <small>Продавець: ${a.seller}</small><br>
-                            <small style="color:#2ecc71">Закриття: ${isNaN(h) ? 'Fixing...' : h+'г '+m+'хв'}</small>
-                        </div>
-                        <div style="text-align:right; min-width:90px;">
-                            <b style="color:var(--gold); font-size:14px;">₴${a.currentBid}</b><br>
-                            <small style="color:#666">Оцінка: ₴${a.coin.price}</small><br>
-                            ${actionHtml}
-                        </div>
-                    </div>`;
-                    found = true;
-                });
-            }
-            if (!found) list.innerHTML = "<center style='margin-top:20px; color:#666;'>Немає лотів</center>";
-        } catch (e) { list.innerHTML = "Помилка"; }
-    }
-
-    async function makeBid(mode, lotId, current) {
-        const bid = Math.ceil(current * 1.1);
-        if (money < bid) return alert("Недостатньо коштів!");
-        if(confirm(`Підтвердити ставку ₴${bid}?`)) {
-            const nick = localStorage.getItem('playerName');
-            try {
-                await fetch(`${FB_URL}/auctions/${mode}/${lotId}.json`, { method: 'PATCH', body: JSON.stringify({ currentBid: bid, lastBidder: nick }) });
-                money -= bid; updateUI(); save(); sync(); refreshAuc(mode);
-            } catch (e) { alert("Помилка"); }
+                html += `<div class="list-row">
+    <div style="flex:1">
+        <b>${a.coin.n}к ${a.coin.y}</b> <small style="color:var(--gold)">[${a.coin.e}]</small><br>
+        <small>👤 ${a.seller}</small><br>
+        <small style="color:${timeLeft < 600000 ? '#e74c3c' : '#2ecc71'}">⏳ ${h}г ${m}хв ${s}с</small>
+    </div>
+    <div style="text-align:right; min-width:100px;">
+        <b style="color:var(--gold); font-size:14px;">₴${a.currentBid}</b><br>
+        <small style="color:#666; display:block; margin-bottom:4px;">Оцінка: ₴${a.coin.price}</small>
+        ${isMine ? `<div style="color:#888; font-size:10px; border:1px solid #444; padding:2px; border-radius:4px; text-align:center;">ВЛАСНИК</div>` : 
+        `<button class="nav-btn" style="width:80px; padding:6px; ${btnStyle}" onclick="makeBid('${mode}', '${id}', ${a.currentBid})">${isMyBid ? 'ВАША' : 'СТАВКА'}</button>`}
+    </div>
+</div>`;
+                found = true;
+            });
         }
-    }
+        list.innerHTML = found ? html : "<center style='margin-top:20px; color:#666;'>Немає лотів</center>";
+    } catch (e) { if (!isSilent) list.innerHTML = "Помилка"; }
+}
+async function makeBid(mode, lotId, current) {
+    const nick = localStorage.getItem('playerName');
+    const nextBid = Math.ceil(current * 1.1);
+    
+    try {
+        const res = await fetch(`${FB_URL}/auctions/${mode}/${lotId}.json`);
+        const lot = await res.json();
+        
+        if (lot.currentBid > current) {
+            alert("Ставку вже оновлено!");
+            refreshAuc(mode);
+            return;
+        }
+
+        // Розраховуємо, скільки реально зняти з гаманця зараз
+        const storageKey = `bid_locked_${lotId}`;
+        const alreadyLocked = parseFloat(localStorage.getItem(storageKey) || 0);
+        
+        // Якщо ми вже лідируємо, платимо тільки різницю. Якщо ні — платимо повну нову ставку.
+        const toPay = (lot.lastBidder === nick) ? (nextBid - alreadyLocked) : nextBid;
+
+        if (money < toPay) {
+            alert("Недостатньо коштів!");
+            return;
+        }
+
+        if (confirm(`Ставка: ₴${nextBid}. До сплати: ₴${toPay}`)) {
+            await fetch(`${FB_URL}/auctions/${mode}/${lotId}.json`, { 
+                method: 'PATCH', 
+                body: JSON.stringify({ currentBid: nextBid, lastBidder: nick }) 
+            });
+
+            money -= toPay;
+            // Оновлюємо в пам'яті, скільки грошей ми "заморозили" в цьому лоті
+            localStorage.setItem(storageKey, nextBid); 
+            
+            updateUI(); save(); sync(); refreshAuc(mode);
+        }
+    } catch (e) { alert("Помилка"); }
+}
 
     // --- РЕЙТИНГ ---
     function openRank() { document.getElementById('rank-win').style.display = 'flex'; loadRank(currentModeId || 'easy'); }
@@ -356,9 +407,25 @@
     function sellFound() { money+=currentCoin.price; closeModal(); }
     function closeModal() { document.getElementById('modal').style.display='none'; updateUI(); save(); sync(); }
     function closeRank() { document.getElementById('rank-win').style.display='none'; }
-    function closeAuc() { document.getElementById('auc-win').style.display='none'; }
+    function closeAuc() {
+    document.getElementById('auc-win').style.display = 'none';
+    if (aucListener) {
+        clearInterval(aucListener); // Зупиняємо оновлення, коли вікно закрите (економимо трафік)
+        aucListener = null;
+    }
+}
     function save() { if(currentModeId) localStorage.setItem('numizmat_'+currentModeId, JSON.stringify({m:money, x:xp, a:myCoins})); }
-    async function sync() { const n = localStorage.getItem('playerName'); if(n && currentModeId) await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n.replace(/[^a-z0-9]/gi,'')}.json`, {method:'PATCH', body:JSON.stringify({name:n, money, xp})}); }
+    async function sync() {
+    const n = localStorage.getItem('playerName');
+    if (n && currentModeId) {
+        try {
+            await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n.replace(/[^a-z0-9]/gi,'')}.json`, {
+                method: 'PATCH', 
+                body: JSON.stringify({ name: n, money: Math.floor(money), xp: xp })
+            });
+        } catch(e) { console.error("Помилка синхронізації"); }
+    }
+}
     function resetGame() { if(confirm("Скинути ВСЕ?")) { localStorage.clear(); location.reload(); } }
 
     async function checkMyAuctionResults() {
@@ -376,7 +443,7 @@
                         myCoins.push(a.coin);
                         await fetch(`${FB_URL}/auctions/${currentModeId}/${id}.json`, { method:'PATCH', body: JSON.stringify({status:'settled'}) });
                     }
-                    save(); updateUI();
+                    save(); updateUI();sync();
                 }
             }
         } catch(e) {}
