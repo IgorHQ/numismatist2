@@ -49,6 +49,7 @@
     <button class="menu-btn" onclick="startGame('realism')">Реалізм</button>
     <button class="menu-btn" style="border-color:#3498db; margin-top: 15px;" onclick="openAuction()">🏛️ АУКЦІОН</button>
     <button class="menu-btn" style="border-color:#555; font-size: 14px;" onclick="openRank()">🏆 РЕЙТИНГ</button>
+    <button class="menu-btn" style="border-color:#e74c3c; color:#e74c3c; font-size: 14px; margin-top: 15px;" onclick="logout()">🚪 ВИЙТИ</button>
 </div>
 
 <div id="ui-layer">
@@ -707,11 +708,107 @@ function search() {
     }
 
     function animate() { requestAnimationFrame(animate); pivot.rotation.y+=0.01; renderer.render(scene, camera); }
-    window.onload = () => {
-        let n = localStorage.getItem('playerName'); if(!n){ n=prompt("Ваш нік:"); localStorage.setItem('playerName', n||'User'); }
+    
+    // window.onload = () => {
+    //     let n = localStorage.getItem('playerName'); if(!n){ n=prompt("Ваш нік:"); localStorage.setItem('playerName', n||'User'); }
+    //     document.getElementById('player-display').innerText = "Гравець: " + n;
+    //     update3D(10, 2026); animate();
+    // };
+    function logout() {
+    if(confirm("Вийти з акаунта?")) {
+        localStorage.removeItem('playerName');
+        location.reload();
+    }
+    }
+    async function authUser() {
+    let name = prompt("Введіть ваш нікнейм:");
+    if (!name) return authUser(); // Повертаємо до вводу, якщо пусто
+
+    const cleanNick = name.replace(/[^a-z0-9]/gi,'');
+    
+    try {
+        // Запит до вашої гілки users_auth
+        const res = await fetch(`${FB_URL}/users_auth/${cleanNick}.json`);
+        const userData = await res.json();
+
+        if (userData) {
+            // Користувач існує — перевіряємо PIN
+            let pin = prompt(`Вітаємо, ${name}! Введіть ваш PIN:`);
+            if (userData.pin == pin) {
+                localStorage.setItem('playerName', name);
+                alert("Успішний вхід!");
+                location.reload(); 
+            } else {
+                alert("Невірний PIN-код!");
+                return authUser();
+            }
+        } else {
+            // Реєстрація нового користувача
+            let newPin = prompt("Це новий акаунт. Придумайте PIN-код:");
+            if (!newPin) return authUser();
+
+            // Створюємо запис у users_auth
+            await fetch(`${FB_URL}/users_auth/${cleanNick}.json`, { 
+                method: 'PUT', 
+                body: JSON.stringify({ pin: newPin }) 
+            });
+
+            localStorage.setItem('playerName', name);
+            alert("Акаунт створено!");
+            location.reload();
+        }
+    } catch (e) {
+        alert("Помилка зв'язку з базою");
+    }
+}
+async function authUser() {
+    let name = prompt("Введіть ваш нікнейм:");
+    if (!name) return authUser(); 
+
+    const cleanNick = name.replace(/[^a-z0-9]/gi,''); // Очищення ніка для БД
+    
+    try {
+        const res = await fetch(`${FB_URL}/users_auth/${cleanNick}.json`);
+        const userData = await res.json();
+
+        if (userData) {
+            // КОРИСТУВАЧ ВЖЕ Є — ПЕРЕВІРЯЄМО ПІН
+            let pin = prompt(`Вітаємо, ${name}! Введіть ваш PIN:`);
+            if (userData.pin == pin) {
+                localStorage.setItem('playerName', name);
+                location.reload(); 
+            } else {
+                alert("Невірний PIN-код!");
+                return authUser();
+            }
+        } else {
+            // КОРИСТУВАЧА НЕМАЄ — РЕЄСТРУЄМО В users_auth
+            let newPin = prompt("Це новий акаунт. Придумайте PIN-код для захисту:");
+            if (!newPin) return authUser();
+
+            await fetch(`${FB_URL}/users_auth/${cleanNick}.json`, { 
+                method: 'PUT', 
+                body: JSON.stringify({ pin: newPin }) 
+            });
+
+            localStorage.setItem('playerName', name);
+            alert("Акаунт створено та додано в базу!");
+            location.reload();
+        }
+    } catch (e) {
+        alert("Помилка зв'язку з сервером");
+    }
+}
+window.onload = () => {
+    let n = localStorage.getItem('playerName'); 
+    if (!n) {
+        authUser(); // Тепер завжди через перевірку в БД
+    } else {
         document.getElementById('player-display').innerText = "Гравець: " + n;
-        update3D(10, 2026); animate();
-    };
+    }
+    update3D(10, 2026); 
+    animate();
+};
 </script>
 </body>
 </html>
