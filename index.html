@@ -756,15 +756,15 @@ function search() {
     //     document.getElementById('player-display').innerText = "Гравець: " + n;
     //     update3D(10, 2026); animate();
     // };
-    // Функція виходу
-    function logout() {
-    if(confirm("Вийти з акаунта?")) {
-        localStorage.removeItem('playerName');
+ // Полная очистка при выходе
+function logout() {
+    if(confirm("Вийти з акаунта? Всі несинхронізовані дані на цьому пристрої будуть видалені.")) {
+        localStorage.clear(); // Удаляем всё: и ник, и монеты, и деньги старого игрока
         location.reload();
     }
 }
    // Функція авторизації через Firebase users_auth
-async function authUser() {
+   async function authUser() {
     let name = prompt("Введіть ваш нікнейм:");
     if (!name) return authUser(); 
     const cleanNick = name.replace(/[^a-z0-9]/gi,'');
@@ -773,30 +773,44 @@ async function authUser() {
         const res = await fetch(`${FB_URL}/users_auth/${cleanNick}.json`);
         const userData = await res.json();
 
-        if (userData) {
-            let pin = prompt(`Вітаємо, ${name}! Введіть ваш PIN:`);
+        if (userData && userData.pin) {
+            let pin = prompt(`Введіть PIN для ${name}:`);
             if (userData.pin == pin) {
                 localStorage.setItem('playerName', name);
+                
+                // --- ЗАГРУЗКА ДАННЫХ ИЗ БД ПРИ ВХОДЕ ---
+                const dataRes = await fetch(`${FB_URL}/leaderboard/easy/${cleanNick}.json`);
+                const cloudData = await dataRes.json();
+                
+                if (cloudData) {
+                    // Записываем данные из облака в память телефона
+                    const gameState = {
+                        m: cloudData.money || 200,
+                        x: cloudData.xp || 0,
+                        a: cloudData.album || [] 
+                    };
+                    localStorage.setItem('numizmat_easy', JSON.stringify(gameState));
+                }
+                // ---------------------------------------
+
+                alert("Успішний вхід!");
                 location.reload(); 
             } else {
                 alert("Невірний PIN!");
                 return authUser();
             }
         } else {
-            let newPin = prompt("Новий гравець! Придумайте PIN-код:");
+            // Регистрация нового (или того, кого нет в users_auth)
+            let newPin = prompt(`Створіть PIN для ${name}:`);
             if (!newPin) return authUser();
-            
-            // СТВОРЕННЯ ЗАПИСУ В БД (users_auth)
             await fetch(`${FB_URL}/users_auth/${cleanNick}.json`, { 
                 method: 'PUT', 
                 body: JSON.stringify({ pin: newPin }) 
             });
-
             localStorage.setItem('playerName', name);
-            alert("Акаунт створено!");
             location.reload();
         }
-    } catch (e) { alert("Помилка зв'язку з базою"); }
+    } catch (e) { alert("Помилка бази"); }
 }
 // Оновлений запуск
 window.onload = () => {
