@@ -715,15 +715,32 @@ function search() {
     }
 }
     function save() { if(currentModeId) localStorage.setItem('numizmat_'+currentModeId, JSON.stringify({m:money, x:xp, a:myCoins})); }
-    async function sync() {
+//     async function sync() {
+//     const n = localStorage.getItem('playerName');
+//     if (n && currentModeId) {
+//         try {
+//             await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n.replace(/[^a-z0-9]/gi,'')}.json`, {
+//                 method: 'PATCH', 
+//                 body: JSON.stringify({ name: n, money: Math.floor(money), xp: xp })
+//             });
+//         } catch(e) { console.error("Помилка синхронізації"); }
+//     }
+// }
+function sync() {
     const n = localStorage.getItem('playerName');
     if (n && currentModeId) {
-        try {
-            await fetch(`${FB_URL}/leaderboard/${currentModeId}/${n.replace(/[^a-z0-9]/gi,'')}.json`, {
-                method: 'PATCH', 
-                body: JSON.stringify({ name: n, money: Math.floor(money), xp: xp })
-            });
-        } catch(e) { console.error("Помилка синхронізації"); }
+        const cleanNick = n.replace(/[^a-z0-9]/gi,'');
+        
+        // Видаляємо async/await. Fetch тепер працює у фоні.
+        fetch(`${FB_URL}/leaderboard/${currentModeId}/${cleanNick}.json`, {
+            method: 'PATCH', 
+            body: JSON.stringify({ 
+                name: n, 
+                money: Math.floor(money), 
+                xp: xp,
+                album: myCoins // Важливо: не забувай синхронізувати альбом!
+            })
+        }).catch(e => console.warn("Фонова синхронізація не вдалася"));
     }
 }
     function resetGame() { if(confirm("Скинути ВСЕ?")) { localStorage.clear(); location.reload(); } }
@@ -757,16 +774,15 @@ function search() {
     //     update3D(10, 2026); animate();
     // };
  // Полная очистка при выходе
-function logout() {
-    if(confirm("Вийти з акаунта? Всі несинхронізовані дані на цьому пристрої будуть видалені.")) {
-        localStorage.clear(); // Удаляем всё: и ник, и монеты, и деньги старого игрока
+ function logout() {
+    if(confirm("Вийти з акаунта? Всі дані на цьому пристрої будуть видалені (в базі вони залишаться).")) {
+        localStorage.clear(); // Повне очищення пам'яті телефону
         location.reload();
     }
 }
-   // Функція авторизації через Firebase users_auth
-   async function authUser() {
+async function authUser() {
     let name = prompt("Введіть ваш нікнейм:");
-    if (!name) return authUser(); 
+    if (!name) return; 
     const cleanNick = name.replace(/[^a-z0-9]/gi,'');
     
     try {
@@ -778,39 +794,50 @@ function logout() {
             if (userData.pin == pin) {
                 localStorage.setItem('playerName', name);
                 
-                // --- ЗАГРУЗКА ДАННЫХ ИЗ БД ПРИ ВХОДЕ ---
-                const dataRes = await fetch(`${FB_URL}/leaderboard/easy/${cleanNick}.json`);
-                const cloudData = await dataRes.json();
+                // КЛЮЧОВИЙ МОМЕНТ: Завантажуємо гроші для всіх режимів ПЕРЕД входом
+                await loadAllModes(cleanNick);
                 
-                if (cloudData) {
-                    // Записываем данные из облака в память телефона
-                    const gameState = {
-                        m: cloudData.money || 200,
-                        x: cloudData.xp || 0,
-                        a: cloudData.album || [] 
-                    };
-                    localStorage.setItem('numizmat_easy', JSON.stringify(gameState));
-                }
-                // ---------------------------------------
-
-                alert("Успішний вхід!");
+                alert("Успішний вхід! Дані синхронізовано.");
                 location.reload(); 
             } else {
                 alert("Невірний PIN!");
                 return authUser();
             }
         } else {
-            // Регистрация нового (или того, кого нет в users_auth)
             let newPin = prompt(`Створіть PIN для ${name}:`);
-            if (!newPin) return authUser();
+            if (!newPin) return;
             await fetch(`${FB_URL}/users_auth/${cleanNick}.json`, { 
                 method: 'PUT', 
                 body: JSON.stringify({ pin: newPin }) 
             });
             localStorage.setItem('playerName', name);
+            // Для нового гравця чистимо старі дані з телефону
+            ['easy', 'medium', 'realism'].forEach(m => localStorage.removeItem(`numizmat_${m}`));
             location.reload();
         }
-    } catch (e) { alert("Помилка бази"); }
+    } catch (e) { alert("Помилка зв'язку з базою"); }
+}
+async function loadAllModes(nick) {
+    const modes = ['easy', 'medium', 'realism'];
+    for (const m of modes) {
+        try {
+            const res = await fetch(`${FB_URL}/leaderboard/${m}/${nick}.json`);
+            const cloudData = await res.json();
+            
+            if (cloudData) {
+                // Якщо в базі є дані — записуємо їх
+                const state = {
+                    m: cloudData.money || 200,
+                    x: cloudData.xp || 0,
+                    a: cloudData.album || []
+                };
+                localStorage.setItem(`numizmat_${m}`, JSON.stringify(state));
+            } else {
+                // Якщо в базі порожньо — ставимо стартові 200 грн
+                localStorage.setItem(`numizmat_${m}`, JSON.stringify({m: 200, x: 0, a: []}));
+            }
+        } catch(e) { console.error("Помилка завантаження режиму " + m); }
+    }
 }
 // Оновлений запуск
 window.onload = () => {
